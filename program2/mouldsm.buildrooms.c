@@ -1,21 +1,31 @@
 /*Max Moulds */
+#include "header.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
+
+bool IsGraphFull();
+void AddRandomConnection();
+bool IsSameRoom(Room x, Room y); 
+Room GetRandomRoom();
+bool CanAddConnectionFrom(Room x); 
+void ConnectRoom(Room x, Room y); 
 
 int main() {
-
-// Create all connections in graph
-while (IsGraphFull() == false)
-{
-  AddRandomConnection();
+  //first init all rooms?
+  Room rooms[MAX_CONNECTED_ROOMS];
+  for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
+    //INIT_ROOM(rooms[i]);
+  }
+  // Create all connections in graph
+  while (IsGraphFull() == false)
+  {
+    AddRandomConnection();
+  }
+  return 0;
 }
-
 // Returns true if all rooms have 3 to 6 outbound connections, false otherwise
 bool IsGraphFull()  
 {
-  ...
+  return false;
 }
 
 // Adds a random, valid outbound connection from a Room to another Room
@@ -45,26 +55,22 @@ void AddRandomConnection()
 // Returns a random Room, does NOT validate if connection can be added
 Room GetRandomRoom()
 {
-  ...
 }
 
 // Returns true if a connection can be added from Room x, false otherwise
 bool CanAddConnectionFrom(Room x) 
 {
-  ...
+  return false;
 }
 
 // Connects Rooms x and y together, does not check if this connection is valid
 void ConnectRoom(Room x, Room y) 
 {
-  ...
+
 }
 
 // Returns true if Rooms x and y are the same Room, false otherwise
 bool IsSameRoom(Room x, Room y) 
 {
-  ...
-}
 
-return 0;
 }

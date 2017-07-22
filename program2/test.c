@@ -1,17 +1,32 @@
 #include "header.h"
+//#define MAX_CONNECTED_ROOMS 7
+//const char *room_names[10] = {"blue","red","green","purple","black","orange","yellow","gold","white","pink"};
+//enum room_type {START_ROOM,END_ROOM,MID_ROOM};
 
-int rand_range(int lower, int upper, int seed) {
-  //srand(time(NULL) + seed);
-  info("Between %d and %d", lower, upper);
-  int temp = ((rand() % ((lower+1-lower)))+lower);
-  return temp;
-}
+//typedef struct Room Room;
+//struct Room {
+//  enum room_type type;
+//  const char *name;
+//  unsigned int cap_conns;
+//  unsigned int num_conns;
+//  Room *connections[7];
+//};
+Room room_list[7];
+
+//bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]);
+//bool CanAddConnection(Room * room1, Room * room2);
+//char * get_dir_name();
+
 
 int main(int argc, char *argv[]) {
-  //_test_debug(argc, argv);
-
-  trace("Debugging is enabled. Level is %d", (int) DEBUG);
-
+  /* So here is the plan, 
+   * 1) Create main directory....
+   * 2) generate 7 random rooms...
+   * 3) connect the 7 random rooms...
+   * 4) write the connection info to the files...
+   * 5) pass either the files or the struct in memory to the game logic...
+   * 6) drink. */
+  srand(time(NULL));
   /* lets test some dir making */
   struct stat s;
   char * path = "./temp";
@@ -33,37 +48,110 @@ int main(int argc, char *argv[]) {
       /* does not exist */
       info("There is no directory at : %s  --- creating a directory called : %s", path, dirname);
       mkdir(dirname, S_IRUSR | S_IWUSR | S_IXUSR);/* 777 is also S_IRWXU or even ACCESSPERMS */
-      /* Now lets make some files...*/
+      /* 1) IS DONE, Now lets make random numbers for room_list...*/
       chdir(dirname);
-      for (int i = 0; i < (sizeof(ROOM_STRING)/sizeof(ROOM_STRING[i])); i++) {
+      bool noap[MAX_CONNECTED_ROOMS];/* I tried 10 different ways, bool arrays seem cheeszy bbbuut */
+      memset(&noap, 0, MAX_CONNECTED_ROOMS * sizeof(bool)); /* Clearing with memset, oo what a cool tool */
+      for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
+        room_list[i].num_conns = 0; /* For now nothing is connected, not max or min here brosif */
+        int cap_conns = rand() % (MAX_CONNECTIONS - MIN_CONNECTIONS); /* Okay I lied, we are going to set connection numbers */
+        cap_conns += MIN_CONNECTIONS-2;
+        room_list[i].cap_conns = cap_conns;
+        /* Could this count forever? */
+        while (true) {
+          int room_index = rand() % MAX_CONNECTED_ROOMS;
+          if (!noap[room_index]) {
+            noap[room_index] = true;
+            room_list[i].name = room_names[room_index];
+            break;
+          }
+        }
+        room_list[i].type = MID_ROOM;/* Every room is a mid_room for now... */
+      }
+      //DELETE MEEEEEEEEEE
+      for (int i = 0; i < 7; i++) {
+        printf("%s, and type is %d\n", room_list[i].name, room_list[i].type);
+      }
+      //CUZ I HAVE NO WAY
+      trace("Initialized the rooms...connecting");
+      int rando = -1;
+      for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
+        for (int j = 0; j < room_list[i].cap_conns; j++) {
+          rando = rand() % MAX_CONNECTED_ROOMS;
+          trace("the random number should be between 0 and 7 and is %d", rando);
+          while (!AddConnection(&(room_list[i]), &(room_list[rando]), room_list)) {
+            rando = rand() % MAX_CONNECTED_ROOMS;
+          }
+        }
+        info("Thank you Richard Stallman or whoever is to blame.");
+      }
+      room_list[0].type = START_ROOM;
+      room_list[MAX_CONNECTED_ROOMS-1].type = END_ROOM;
+      info("WE JUST SET THE START AND END ROOM AND THEY ARE %s and %s respectively", room_list[0].name, room_list[MAX_CONNECTED_ROOMS-1].name);
+      /* So lets recap the state at this point */
+      /* room_list is a array of Room structs, each room is one of the 7 for a given run */
+
+      for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
         char * checkpath = getcwd(NULL, 0); /* remember to free checkpath, also how does this handle errors? idk */
         trace("Should be in the new directory = %s so pwd is %s", dirname, checkpath);
-        char * file_path_to_create = (char *) malloc(strlen(checkpath) + strlen(ROOM_STRING[i]) + (sizeof("/")));
+        char * file_path_to_create = (char *) malloc(strlen(checkpath) + strlen(room_list[i].name) + (sizeof("/")));
+        info("Building file path for %s", room_list[i].name);
         end = file_path_to_create;
         end += sprintf(end, "%s", checkpath);
         end += sprintf(end, "%s", "/");
-        end += sprintf(end, "%s", ROOM_STRING[i]);
+        end += sprintf(end, "%s", room_list[i].name);
         trace("This is the new file being created :: %s ", file_path_to_create);
-        info("The number of rooms is %d ", (sizeof(ROOM_STRING)/sizeof(ROOM_STRING[i])));
-        FILE *file = fopen(ROOM_STRING[i], "ab+");
-        //int file = open(ROOM_STRING[i], O_RDWR | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH);
-        char * room_info = (char *) malloc(strlen("ROOM NAME: ") + strlen(ROOM_STRING[i]) + 3);
+        FILE *file = fopen(room_list[i].name, "ab+");
+        /* So we have the room open, lets add the connections now too */
+        char * room_info = (char *) malloc(strlen("ROOM NAME: ") + strlen(room_list[i].name) + 3);
+        /* Building each room info */
         end = room_info;
         end += sprintf(end, "%s", "ROOM NAME: ");
-        end += sprintf(end, "%s", ROOM_STRING[i]);
+        end += sprintf(end, "%s", room_list[i].name);
         end += sprintf(end, "%s", "\n");
-        //*strncat(char *dest, const char *src, size_t n)
         trace("This is what is being written to the file (%d) :: %s ", strlen(room_info), room_info);
         int _err_fwrite = fwrite(room_info, 1, strlen(room_info)+1, file);
         trace("fwrite returned :: %d", _err_fwrite);
-        /* Done writing for now */
+        /* Build connection strings. */
+        char * room_connection_info;
+        int room_connection_info_length = 0;
+        for (int j = 0; j < room_list[i].num_conns; j++) {
+          room_connection_info_length += strlen("CONNECTION ");
+          room_connection_info_length += snprintf(NULL, 0,"%d",j); /* deerty */
+          room_connection_info_length += strlen((room_list[i].connections[j])->name);
+          room_connection_info_length += strlen(": \n");
+          /* we couild cheat and use fprintf(file, "CONNECTION %d: %s\n", j + 1, rooms[j].name); */
+          /* or realloc...*/
+        }
+        info("type is %d, so type strint is %s", room_list[i].type, room_type_string[room_list[i].type]);
+        room_connection_info_length += strlen(room_type_string[room_list[i].type]) + 4;
+
+        /* k malloc then loop again haha */
+        info("we are going to malloc %d bytes to write room connection info", room_connection_info_length);
+        room_connection_info = (char *) malloc(room_connection_info_length * sizeof(char));
+        char * end = room_connection_info;
+        for (int j = 0; j < room_list[i].num_conns; j++) {
+          end += sprintf(end, "%s", "CONNECTION ");
+          end += sprintf(end, "%d", j+1);
+          end += sprintf(end, "%s", ": ");
+          end += sprintf(end, "%s", (room_list[i].connections[j])->name);
+          end += sprintf(end, "%s", "\n");
+        }
+        /* Annnnd add the room type string */
+        end += sprintf(end, "%s", room_type_string[room_list[i].type]);
+        end += sprintf(end, "%s", "\n");
+        info("Going to write : --------------\n%s\n---------- to %s", room_connection_info, room_list[i].name);
+        _err_fwrite = fwrite(room_connection_info, 1, strlen(room_connection_info)+1, file); 
+
         int _err_fclose = fclose(file);
         if (_err_fclose != 0) {
           err("A file did not close, ignoring for now :: %s ", file_path_to_create);
         }
+        info("freeing..");
         free(room_info);
         free(checkpath);
         free(file_path_to_create);
+        free(room_connection_info);
       }
       free(dirname);
 
@@ -81,91 +169,38 @@ int main(int argc, char *argv[]) {
       info("There is something else at : %s", path);
     }
   }
-  //So at this point, basic files have one line, now build connections?
-  //I need to pick a starting room. 
-  //
-  srand(time(NULL));
-  int starting_room = (rand() % ((sizeof(ROOM_STRING)/sizeof(ROOM_STRING[0]))));
-  info("Should have set a starting room :: %s  :: %d :: with 0 being the min and max being :: %d ", ROOM_STRING[starting_room], starting_room, (sizeof(ROOM_STRING)/sizeof(ROOM_STRING[0])));
-  //lets open it again.
-  FILE *file = fopen(ROOM_STRING[starting_room], "ab+");
-  // So lets make some connections?
-  int num_connections = ((rand() % ((MAX_CONNECTIONS + 1 - MIN_CONNECTIONS)) + MIN_CONNECTIONS));
-  info("We have %d connections for the %s room!!!", num_connections, ROOM_STRING[starting_room]);
-  
-  //make a new variable to hold connections
-  
-  int new_rand = 0;
-  char rooms[num_connections+1][2];
-  memset(rooms, -1, sizeof(rooms[0][0]) * num_connections * 2);
-  rooms[0][0] = starting_room;
-  rooms[0][1] = ROOM_STRING[starting_room];
-  for (int i = 1; i <= num_connections; i++) {
-    
-    //we need to call rand again to get the next room, im going to cheat, 
-    
-    new_rand = rand() % ((sizeof(ROOM_STRING)/sizeof(ROOM_STRING[0])));  
-    
-    for (int j = 0; j < num_connections; j++) {
-      
-      if (new_rand == rooms[j][0]) {
-        //we have that room already, self identity
-        //just move up one. sure
-        new_rand = (new_rand + 1) % ((sizeof(ROOM_STRING)/sizeof(ROOM_STRING[0])));
-        trace("already connected, new rand is %d", new_rand);
-        j = 0;
-      }
-      else {
-        //rooms[j][0] = new_rand;
-        //rooms[j][1] = ROOM_STRING[new_rand];
-        //trace("Adding the room, rand matched, added %s", ROOM_STRING[new_rand]);
-      }
-    }
-    err("Random number was %d so room would be %s ", new_rand, ROOM_STRING[new_rand]);
-    rooms[i][0] = new_rand;
-    rooms[i][1] = ROOM_STRING[new_rand]; //DOESNT WORK LIKE I THOUGHT...hmm
-    // can i just write to file? here... lets try
-    char * room_to_write = (char *) malloc(strlen("CONNECTION ") + snprintf(NULL, 0,"%d",i) + strlen(": ") + strlen(ROOM_STRING[new_rand]) + strlen("\n"));
-    char * end = room_to_write;
-    end += sprintf(end, "%s", "CONNECTION ");
-    end += sprintf(end, "%d", i);
-    end += sprintf(end, "%s", ": ");
-    end += sprintf(end, "%s", ROOM_STRING[new_rand]);
-    end += sprintf(end, "%s", "\n");
-    int _err_fwrite = fwrite(room_to_write, 1, strlen(room_to_write)+1, file);
-    trace("IT WAS WRITTEN %d", i);
-    free(room_to_write);
-  }
-  //so now rooms is ready to be written? 
-  
-
-  //write starting room jsut to test
-  char * to_write = "ROOM TYPE: STARTING ROOM\n";
-  int _err_fwrite = fwrite(to_write, 1, strlen(to_write)+1, file);
-  //close
-  int _err_fclose = fclose(file);
-  trace("all done writing starting room info");
-
-
-  //what now. 
-  for (int i = 0; i < (sizeof(rooms)/sizeof(rooms[0])-1); i++) {
-    //add connections somehow. 
-    //open
-    info("In a loop");
-    trace("opening %s", ROOM_STRING[rooms[i+1][0]]);
-    FILE * room_file = fopen(ROOM_STRING[rooms[i+1][0]], "ab+");
-    //write
-    char * room_to_write = (char *) malloc(strlen("CONNECTION ") + snprintf(NULL, 0,"%d",i) + strlen(": ") + strlen(ROOM_STRING[rooms[i+1][0]]) + strlen("\n"));
-    char * end = room_to_write;
-    end += sprintf(end, "%s", "CONNECTION ");
-    end += sprintf(end, "%d", i); 
-    end += sprintf(end, "%s", ": ");
-    end += sprintf(end, "%s", ROOM_STRING[rooms[i+1][0]]);
-    end += sprintf(end, "%s", "\n");
-    //int _err_fwrite = fwrite(room_to_write, 1, strlen(room_to_write)+1, room_file);
-  }
-  trace("size of %d", sizeof(rooms)/sizeof(rooms[0]));
-  trace("size of other %d", sizeof(rooms[0])/sizeof(rooms[0][0]));
-
-
+  /* A Recap, */
+  /* We have 7 files in a directory each with one connections? */
 }
+
+bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]) {
+  Room *r1 = room1;
+  Room *r2 = room2;
+  if (r1->num_conns == MAX_CONNECTIONS) {
+    return true;
+  }
+  if (CanAddConnection(room1, room2)) {
+    return false;
+  }
+  if (r1->num_conns >= MAX_CONNECTIONS || r2->num_conns >= MAX_CONNECTIONS) {
+    return false;
+  }
+  r1->connections[r1->num_conns] = r2;
+  r2->connections[r2->num_conns] = r1;
+  r1->num_conns++;
+  r2->num_conns++;
+  return true;
+}
+bool CanAddConnection(Room * room1, Room * room2) {
+  /* DO YOU SELF-IDENTIFY AS BEING CONNECTED TO YOURSELF ? */
+  if (strcmp(room1->name,room2->name) == 0) {
+    return true;
+  }
+  for (int i = 0; i < room1->num_conns; i++) {
+    if ((strcmp((room1->connections[i])->name,room2->name) == 0) &&  room1->connections[i] != NULL) {
+      return true;
+    }
+  }
+  return false;
+}
+

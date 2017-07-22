@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdbool.h>
 /* file and dir stuffs */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,35 +22,23 @@
 #include <pthread.h>
 
 /* Room names */
-
-#define FOREACH_ROOM(ROOM) \
-        ROOM(blue)   \
-        ROOM(red)  \
-        ROOM(green)   \
-        ROOM(purple)  \
-        ROOM(black)  \
-        ROOM(orange)  \
-        ROOM(yellow)  \
-        ROOM(gold)  \
-        ROOM(white)  \
-        ROOM(pink)  \
-
-#define GENERATE_ENUM(ENUM) ENUM,
-#define GENERATE_STRING(STRING) #STRING,
-
-enum ROOM_ENUM {
-    FOREACH_ROOM(GENERATE_ENUM)
+#define MAX_CONNECTED_ROOMS 7
+const char * room_names[10] = {"blue","red","green","purple","black","orange","yellow","gold","white","pink"};
+enum room_type {START_ROOM,END_ROOM,MID_ROOM};
+const char * room_type_string[3] = {"START_ROOM", "END_ROOM", "MID_ROOM"};
+typedef struct Room Room;
+struct Room {
+  enum room_type type;
+  const char *name;
+  unsigned int cap_conns;
+  unsigned int num_conns;
+  Room *connections[7];
 };
 
-static const char *ROOM_STRING[] = {
-    FOREACH_ROOM(GENERATE_STRING)
-};
+bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]);
+bool CanAddConnection(Room * room1, Room * room2);
 
 #define ONID "mouldsm"
-#define START_ROOM "START_ROOM"
-#define MID_ROOM "MID_ROOM"
-#define END_ROOM "END_ROOM"
-#define MAX_CONNECTED_ROOMS 7
 #define MIN_CONNECTIONS 3
 #define MAX_CONNECTIONS 6
 
@@ -83,7 +72,7 @@ int  _test_debug(int argc, char **args) {
   err("oops an error, i was = %d", i);
   trace("Debugging is enabled.");
   trace("Debug level: %d", i);
-  
+
   /* Some time demo stuff */
   time_t rawtime;
   struct tm * timeinfo;
@@ -92,7 +81,7 @@ int  _test_debug(int argc, char **args) {
   timeinfo = localtime ( &rawtime );
   info( "Current local time and date: %s", asctime (timeinfo) );
   /* testing the enum stuffs */
-  trace("enum orange as a string: %s\n",ROOM_STRING[orange]);
+  //trace("enum orange as a string: %s\n",ROOM_STRING[orange]);
   return 0;
 }
 
