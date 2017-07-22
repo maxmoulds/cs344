@@ -1,4 +1,4 @@
-CFLAGS = -Wall -fpic -lm
+CFLAGS = -fpic -lm -lpthread
 
 unittestresults.out: all
 	rm -f unittestresults.out
@@ -21,4 +21,5 @@ all:
 
 
 clean:
-	rm -f test *.rooms.*
+	rm -f test
+	rm -rf *.rooms.*

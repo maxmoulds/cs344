@@ -13,23 +13,45 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h> /*grr */
+#include <sys/fcntl.h> /*uber grr*/
 
 #include <string.h>
 
+/*threads? */
+#include <pthread.h>
+
 /* Room names */
-#define ROOM_GREEN "green"
-#define ROOM_YELLOW "yellow"
-#define ROOM_BLUE "blue"
-#define ROOM_RED "red"
-#define ROOM_BLACK "black"
-#define ROOM_BROWN "brown"
-#define ROOM_WHITE "white"
-#define ROOM_PURPLE "purple"
-#define ROOM_ORANGE "orange"
-#define ROOM_GOLD "gold"
-#define ROOM_PINK "pink"
+
+#define FOREACH_ROOM(ROOM) \
+        ROOM(blue)   \
+        ROOM(red)  \
+        ROOM(green)   \
+        ROOM(purple)  \
+        ROOM(black)  \
+        ROOM(orange)  \
+        ROOM(yellow)  \
+        ROOM(gold)  \
+        ROOM(white)  \
+        ROOM(pink)  \
+
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,
+
+enum ROOM_ENUM {
+    FOREACH_ROOM(GENERATE_ENUM)
+};
+
+static const char *ROOM_STRING[] = {
+    FOREACH_ROOM(GENERATE_STRING)
+};
 
 #define ONID "mouldsm"
+#define START_ROOM "START_ROOM"
+#define MID_ROOM "MID_ROOM"
+#define END_ROOM "END_ROOM"
+#define MAX_CONNECTED_ROOMS 7
+#define MIN_CONNECTIONS 3
+#define MAX_CONNECTIONS 6
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -69,6 +91,8 @@ int  _test_debug(int argc, char **args) {
   time ( &rawtime );
   timeinfo = localtime ( &rawtime );
   info( "Current local time and date: %s", asctime (timeinfo) );
+  /* testing the enum stuffs */
+  trace("enum orange as a string: %s\n",ROOM_STRING[orange]);
   return 0;
 }
 
