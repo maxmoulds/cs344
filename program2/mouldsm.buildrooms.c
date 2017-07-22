@@ -1,4 +1,11 @@
 /*Max Moulds */
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int main() {
+
 // Create all connections in graph
 while (IsGraphFull() == false)
 {
@@ -57,4 +64,7 @@ void ConnectRoom(Room x, Room y)
 bool IsSameRoom(Room x, Room y) 
 {
   ...
+}
+
+return 0;
 }
