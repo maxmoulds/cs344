@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
     }
     err("Random number was %d so room would be %s ", new_rand, ROOM_STRING[new_rand]);
     rooms[i][0] = new_rand;
-    rooms[i][1] = ROOM_STRING[new_rand];
+    rooms[i][1] = ROOM_STRING[new_rand]; //DOESNT WORK LIKE I THOUGHT...hmm
     // can i just write to file? here... lets try
     char * room_to_write = (char *) malloc(strlen("CONNECTION ") + snprintf(NULL, 0,"%d",i) + strlen(": ") + strlen(ROOM_STRING[new_rand]) + strlen("\n"));
     char * end = room_to_write;
@@ -134,6 +134,7 @@ int main(int argc, char *argv[]) {
     end += sprintf(end, "%s", "\n");
     int _err_fwrite = fwrite(room_to_write, 1, strlen(room_to_write)+1, file);
     trace("IT WAS WRITTEN %d", i);
+    free(room_to_write);
   }
   //so now rooms is ready to be written? 
   
@@ -146,7 +147,25 @@ int main(int argc, char *argv[]) {
   trace("all done writing starting room info");
 
 
-
+  //what now. 
+  for (int i = 0; i < (sizeof(rooms)/sizeof(rooms[0])-1); i++) {
+    //add connections somehow. 
+    //open
+    info("In a loop");
+    trace("opening %s", ROOM_STRING[rooms[i+1][0]]);
+    FILE * room_file = fopen(ROOM_STRING[rooms[i+1][0]], "ab+");
+    //write
+    char * room_to_write = (char *) malloc(strlen("CONNECTION ") + snprintf(NULL, 0,"%d",i) + strlen(": ") + strlen(ROOM_STRING[rooms[i+1][0]]) + strlen("\n"));
+    char * end = room_to_write;
+    end += sprintf(end, "%s", "CONNECTION ");
+    end += sprintf(end, "%d", i); 
+    end += sprintf(end, "%s", ": ");
+    end += sprintf(end, "%s", ROOM_STRING[rooms[i+1][0]]);
+    end += sprintf(end, "%s", "\n");
+    //int _err_fwrite = fwrite(room_to_write, 1, strlen(room_to_write)+1, room_file);
+  }
+  trace("size of %d", sizeof(rooms)/sizeof(rooms[0]));
+  trace("size of other %d", sizeof(rooms[0])/sizeof(rooms[0][0]));
 
 
 }
