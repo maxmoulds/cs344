@@ -14,7 +14,7 @@ Tests:=$(shell ls  | egrep '*test[0-9]+.c' | sort -n  )
 
 
 test:
-	gcc -o test header.h test.c $(CFLAGS)
+	gcc -o btest header.h test.c $(CFLAGS)
 
 all:
 	gcc -o buildrooms header.h mouldsm.buildrooms.c $(CLFAGS)	
@@ -22,7 +22,7 @@ all:
 
 
 clean:
-	rm -f test
+	rm -f btest
 	rm -f buildrooms
 	rm -rf *.rooms.*
 	rm -f *.gch

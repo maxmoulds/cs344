@@ -38,6 +38,7 @@ struct Room {
 bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]);
 bool CanAddConnection(Room * room1, Room * room2);
 Room * buildrooms();
+int adventure(Room rooms[MAX_CONNECTED_ROOMS]); 
 
 #define ONID "mouldsm"
 #define MIN_CONNECTIONS 3

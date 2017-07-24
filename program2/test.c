@@ -1,7 +1,131 @@
 #include "header.h"
 Room room_list[7];
 
-int main(int argc, char *argv[]) {
+void getFileCreationTime(char *path) {
+  struct stat attr;
+  stat(path, &attr);
+  printf("Last modified time: %s\n", ctime(&attr.st_mtime));
+  printf(" as int? %d\n", attr.st_ctime);
+}
+
+void printRoom(Room * room) {
+  printf("CURRENT LOCATION: %s\n", room->name);
+  printf("POSSIBLE CONNECTIONS: ");
+  for (int i = 0; i < room->num_conns; i++) {
+    printf("%s", (room->connections[i])->name);
+    if (i < room->num_conns-1) {
+      printf(", ");
+    }
+  }
+  printf(".");
+  printf("\nWHERE TO?: >");
+}
+
+int room_match(char * search, Room room, Room rooms[MAX_CONNECTED_ROOMS]) {
+  trace("matching %s to a room name", search);
+  for (int i = 0; i < room.num_conns; i++)
+  {
+    if (strcmp(search, room.connections[i]->name) == 0) {
+      /* Its a connected room, so now return the right index in the the room_list */
+      for (int j = 0; j < MAX_CONNECTED_ROOMS; j++)
+      {
+        trace("testing %s against %s", room.connections[i]->name, rooms[j].name);
+        if (strcmp(room.connections[i]->name, rooms[j].name) == 0) {
+          return j;
+        }
+      }
+      /* so something super weird happened err out */
+      err("YOU SHOULD NEVER SEE THIS MESSAGE - no matching room in room_list");
+      return -1;
+
+    }
+  }
+  /* no match, what to do? */
+  err("No match for input %s", search);
+  printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\nWHERE TO? ");
+  return -2;
+}
+
+int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
+  /* What to do, what to do, */
+  /* lets test the functions */ 
+  trace("Hey were in the adventure now....");
+  /* So find the starting room? */
+  trace("I hope this is the starting room - %s and type %s", rooms[0].name, room_type_string[rooms[0].type]);
+  /* so spec says to re-read the files, okay, and find the one with the newest
+   * mtime */
+  //first check cwd
+  info("end room is %s", rooms[MAX_CONNECTED_ROOMS-1].name);
+  char * checkpath = getcwd(NULL, 0);
+  trace("checking path :: %s ", checkpath);
+  //so we are still in the rooms dir. read rooms[0]? 
+  getFileCreationTime(rooms[0].name);
+  getFileCreationTime(rooms[1].name);
+  //so we have a problem, all my access/mod/change times are the same?
+  //screw it
+  printRoom(&rooms[0]);
+  Room current_room = rooms[0];
+  char line[256];
+  int i;
+  if (fgets(line, sizeof(line), stdin)) {
+    if (1 == sscanf(line, "%d", &i)) {
+      /* i can be safely used */
+    }
+  }
+  strtok(line, "\n");
+  trace("I scanned in %s", line);
+  int to_move_to_room = room_match(line, current_room, rooms);
+  while (to_move_to_room == -2) {
+    /* wrong stuff entered */
+    if (fgets(line, sizeof(line), stdin)) {
+      if (1 == sscanf(line, "%d", &i)) {
+        /* i can be safely used */
+      }   
+    }
+    strtok(line, "\n");
+    trace("I scanned in %s", line);
+
+    to_move_to_room = room_match(line, current_room, rooms);
+  }
+  if (to_move_to_room == -1) {
+    err("AGAIN YOU SHOULD NEVER BE HERE");
+    return -1;
+  }
+  trace("we found a room %d :: %s which matched input of %s", to_move_to_room, rooms[to_move_to_room].name, line);
+  /* now move to that room lets loop this. */
+  /* we no one move is needed. */
+  current_room = rooms[to_move_to_room];
+  while (to_move_to_room != (MAX_CONNECTED_ROOMS-1)) {
+    info("Not an end room yet, %d, %d", to_move_to_room, MAX_CONNECTED_ROOMS-1);
+    info("end room is %s", rooms[MAX_CONNECTED_ROOMS-1].name);
+    printRoom(&current_room);
+    if (fgets(line, sizeof(line), stdin)) {
+      if (1 == sscanf(line, "%d", &i)) {
+        /* i can be safely used */
+      }   
+    }
+    strtok(line, "\n");
+    trace("I scanned in %s", line);
+    to_move_to_room = room_match(line, current_room, rooms);
+    if (to_move_to_room == -1) {
+      return -1; 
+    }
+    trace("we found a room %d :: %s which matched input of %s", to_move_to_room, rooms[to_move_to_room].name, line);
+    current_room = rooms[to_move_to_room];
+  }
+
+
+
+  //free(line);//for some reason this barfs
+  info("freeing checkpath");
+  free(checkpath);
+  /* Well to get here you must have been a winner */
+  info("So END_ROOM is %s, and you are in the %s", rooms[MAX_CONNECTED_ROOMS-1].name, current_room.name);
+  return 0;
+}
+
+
+Room * buildrooms() {
   /* So here is the plan, 
    * 1) Create main directory....
    * 2) generate 7 random rooms...
@@ -156,8 +280,7 @@ int main(int argc, char *argv[]) {
       info("There is something else at : %s", path);
     }
   }
-  /* A Recap, */
-  /* We have 7 files in a directory each with one connections? */
+  return room_list;
 }
 
 bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]) {
@@ -189,5 +312,12 @@ bool CanAddConnection(Room * room1, Room * room2) {
     }
   }
   return false;
+}
+
+int main() {
+  Room * built_rooms = buildrooms();
+  int what_fun = adventure(built_rooms);
+  info("Did we win? %d ... ", what_fun);
+  return 0;
 }
 
