@@ -37,6 +37,7 @@ struct Room {
 
 bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]);
 bool CanAddConnection(Room * room1, Room * room2);
+Room * buildrooms();
 
 #define ONID "mouldsm"
 #define MIN_CONNECTIONS 3
@@ -64,25 +65,5 @@ bool CanAddConnection(Room * room1, Room * room2);
 #else
 #define err(fmt, args...) /* Don't do anything in release builds */
 #endif
-
-int  _test_debug(int argc, char **args) {
-  int i = 10;
-  info("Welcome");
-  info("Here is some info");
-  err("oops an error, i was = %d", i);
-  trace("Debugging is enabled.");
-  trace("Debug level: %d", i);
-
-  /* Some time demo stuff */
-  time_t rawtime;
-  struct tm * timeinfo;
-
-  time ( &rawtime );
-  timeinfo = localtime ( &rawtime );
-  info( "Current local time and date: %s", asctime (timeinfo) );
-  /* testing the enum stuffs */
-  //trace("enum orange as a string: %s\n",ROOM_STRING[orange]);
-  return 0;
-}
 
 #endif

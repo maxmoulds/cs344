@@ -1,22 +1,5 @@
 #include "header.h"
-//#define MAX_CONNECTED_ROOMS 7
-//const char *room_names[10] = {"blue","red","green","purple","black","orange","yellow","gold","white","pink"};
-//enum room_type {START_ROOM,END_ROOM,MID_ROOM};
-
-//typedef struct Room Room;
-//struct Room {
-//  enum room_type type;
-//  const char *name;
-//  unsigned int cap_conns;
-//  unsigned int num_conns;
-//  Room *connections[7];
-//};
 Room room_list[7];
-
-//bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]);
-//bool CanAddConnection(Room * room1, Room * room2);
-//char * get_dir_name();
-
 
 int main(int argc, char *argv[]) {
   /* So here is the plan, 
@@ -25,7 +8,9 @@ int main(int argc, char *argv[]) {
    * 3) connect the 7 random rooms...
    * 4) write the connection info to the files...
    * 5) pass either the files or the struct in memory to the game logic...
-   * 6) drink. */
+   * 6) drink.
+   * 7) return the room_list array to whatever called this to-be buildroom
+   * function!!! */
   srand(time(NULL));
   /* lets test some dir making */
   struct stat s;
@@ -125,6 +110,7 @@ int main(int argc, char *argv[]) {
         }
         info("type is %d, so type strint is %s", room_list[i].type, room_type_string[room_list[i].type]);
         room_connection_info_length += strlen(room_type_string[room_list[i].type]) + 4;
+        room_connection_info_length += strlen("ROOM TYPE: ");
 
         /* k malloc then loop again haha */
         info("we are going to malloc %d bytes to write room connection info", room_connection_info_length);
@@ -138,6 +124,7 @@ int main(int argc, char *argv[]) {
           end += sprintf(end, "%s", "\n");
         }
         /* Annnnd add the room type string */
+        end += sprintf(end, "%s", "ROOM TYPE: "); 
         end += sprintf(end, "%s", room_type_string[room_list[i].type]);
         end += sprintf(end, "%s", "\n");
         info("Going to write : --------------\n%s\n---------- to %s", room_connection_info, room_list[i].name);
