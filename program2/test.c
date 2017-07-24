@@ -42,35 +42,18 @@ int room_match(char * search, Room room, Room rooms[MAX_CONNECTED_ROOMS]) {
   }
   /* no match, what to do? */
   err("No match for input %s", search);
-  printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\nWHERE TO? ");
+  printf("HUH? I DON'T UNDERSTAND THAT ROOM. TRY AGAIN.\n");
+  printRoom(&room);
   return -2;
 }
 
-int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
-  /* What to do, what to do, */
-  /* lets test the functions */ 
-  trace("Hey were in the adventure now....");
-  /* So find the starting room? */
-  trace("I hope this is the starting room - %s and type %s", rooms[0].name, room_type_string[rooms[0].type]);
-  /* so spec says to re-read the files, okay, and find the one with the newest
-   * mtime */
-  //first check cwd
-  info("end room is %s", rooms[MAX_CONNECTED_ROOMS-1].name);
-  char * checkpath = getcwd(NULL, 0);
-  trace("checking path :: %s ", checkpath);
-  //so we are still in the rooms dir. read rooms[0]? 
-  getFileCreationTime(rooms[0].name);
-  getFileCreationTime(rooms[1].name);
-  //so we have a problem, all my access/mod/change times are the same?
-  //screw it
-  printRoom(&rooms[0]);
-  Room current_room = rooms[0];
-  char line[256];
+int input_room(char * line, int size_of_line, Room current_room, Room rooms[MAX_CONNECTED_ROOMS-1]) {
+  info("in INPUT...");
   int i;
-  if (fgets(line, sizeof(line), stdin)) {
+  if (fgets(line, size_of_line, stdin)) {
     if (1 == sscanf(line, "%d", &i)) {
       /* i can be safely used */
-    }
+    }   
   }
   strtok(line, "\n");
   trace("I scanned in %s", line);
@@ -81,7 +64,7 @@ int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
       if (1 == sscanf(line, "%d", &i)) {
         /* i can be safely used */
       }   
-    }
+    }   
     strtok(line, "\n");
     trace("I scanned in %s", line);
 
@@ -89,8 +72,26 @@ int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
   }
   if (to_move_to_room == -1) {
     err("AGAIN YOU SHOULD NEVER BE HERE");
-    return -1;
+    return -1; 
   }
+  return to_move_to_room;
+}
+
+int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
+  /* What to do, what to do, */
+  /* lets test the functions */ 
+  trace("Hey were in the adventure now....");
+  /* So find the starting room? */
+  trace("I hope this is the starting room - %s and type %s", rooms[0].name, room_type_string[rooms[0].type]);
+  /* so spec says to re-read the files, okay, and find the one with the newest
+   * mtime */
+  info("end room is %s", rooms[MAX_CONNECTED_ROOMS-1].name);
+  char * checkpath = getcwd(NULL, 0);
+  trace("checking path :: %s ", checkpath);
+  printRoom(&rooms[0]);
+  Room current_room = rooms[0];
+  char line[256];
+  int to_move_to_room = input_room(line, sizeof(line), current_room, rooms);
   trace("we found a room %d :: %s which matched input of %s", to_move_to_room, rooms[to_move_to_room].name, line);
   /* now move to that room lets loop this. */
   /* we no one move is needed. */
@@ -99,23 +100,10 @@ int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
     info("Not an end room yet, %d, %d", to_move_to_room, MAX_CONNECTED_ROOMS-1);
     info("end room is %s", rooms[MAX_CONNECTED_ROOMS-1].name);
     printRoom(&current_room);
-    if (fgets(line, sizeof(line), stdin)) {
-      if (1 == sscanf(line, "%d", &i)) {
-        /* i can be safely used */
-      }   
-    }
-    strtok(line, "\n");
-    trace("I scanned in %s", line);
-    to_move_to_room = room_match(line, current_room, rooms);
-    if (to_move_to_room == -1) {
-      return -1; 
-    }
+    to_move_to_room = input_room(line, sizeof(line), current_room, rooms);
     trace("we found a room %d :: %s which matched input of %s", to_move_to_room, rooms[to_move_to_room].name, line);
     current_room = rooms[to_move_to_room];
   }
-
-
-
   //free(line);//for some reason this barfs
   info("freeing checkpath");
   free(checkpath);
@@ -138,8 +126,6 @@ Room * buildrooms() {
   srand(time(NULL));
   /* lets test some dir making */
   struct stat s;
-  char * path = "./temp";
-  char * filename = "test";
   /* make dir name */
   char * dirname = (char *) malloc(strlen(ONID) + strlen(".rooms.") + (sizeof(char) * sizeof(long)));
   char * end = dirname;
@@ -151,11 +137,11 @@ Room * buildrooms() {
   trace("sprintfing chars to :: %s", dirname);
   info("Should have made a string of length %d to hold the string of actual length %d ", (strlen(ONID) + strlen(".rooms.") + (sizeof(char) * sizeof(long))), strlen(dirname));
   trace("You wasted %d bytes of memory, congrats", ((strlen(ONID) + strlen(".rooms.") + (sizeof(char) * sizeof(long))) - strlen(dirname)));
-  int err = lstat(path, &s);
+  int err = lstat(dirname, &s);
   if(-1 == err) {
     if(ENOENT == errno) {
       /* does not exist */
-      info("There is no directory at : %s  --- creating a directory called : %s", path, dirname);
+      info("There is no directory at : %s  --- creating a directory called : %s", getcwd(NULL, 0), dirname); /* I LEAKED */
       mkdir(dirname, S_IRUSR | S_IWUSR | S_IXUSR);/* 777 is also S_IRWXU or even ACCESSPERMS */
       /* 1) IS DONE, Now lets make random numbers for room_list...*/
       chdir(dirname);
@@ -177,11 +163,6 @@ Room * buildrooms() {
         }
         room_list[i].type = MID_ROOM;/* Every room is a mid_room for now... */
       }
-      //DELETE MEEEEEEEEEE
-      for (int i = 0; i < 7; i++) {
-        printf("%s, and type is %d\n", room_list[i].name, room_list[i].type);
-      }
-      //CUZ I HAVE NO WAY
       trace("Initialized the rooms...connecting");
       int rando = -1;
       for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
@@ -267,17 +248,18 @@ Room * buildrooms() {
       free(dirname);
 
     } else {
-      err("Something really nasty happened with/at the : %s -- path", path);
+      err("Something really nasty happened with/at the : %s -- path", dirname);
+      free(dirname);/* DANGER WILL ROBINSON */
       /* do i exit right? */
       exit(1);
     }
   } else {
     if(S_ISDIR(s.st_mode)) {
       /* it's a dir */
-      info("That directory already exists as : %s", path);
+      info("That directory already exists as : %s", dirname);
     } else {
       /* exists but is no dir */
-      info("There is something else at : %s", path);
+      info("There is something else at : %s", dirname);
     }
   }
   return room_list;
