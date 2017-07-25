@@ -1,4 +1,4 @@
-//#define DEBUG 3
+#define DEBUG 3
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +51,7 @@ Room room_list[7];
 /* lpthread stuffs */
 pthread_t tid;
 pthread_mutex_t lock;
+char wd[256];
 
 Room * room_read() {
   Room * rooms =  malloc(sizeof(Room)*MAX_CONNECTED_ROOMS);
@@ -70,6 +71,10 @@ Room * room_read() {
     if (linecount == 0) {
       strcpy(dir, line);
       linecount += 1;
+      /*wd = (char *) malloc(strlen(dir)*sizeof(char)+2*sizeof(char));*/
+      strcpy(wd, dir);/* why does this not return right */
+      trace("WD is %s", wd);
+      chdir(wd);
     }
     else {  
       in = strtok(line, " ");
@@ -172,7 +177,8 @@ void* time_print()
   time ( &rawtime );
   timeinfo = localtime ( &rawtime );
   /*lets check some stuffs */
-  trace("chdir may be needed? %s", getcwd(NULL, 0));
+  chdir(wd);
+  trace("chdir may be needed? %s, but wd is %s", getcwd(NULL, 0));
   /* prep new file */
   //char * filename = (char *) malloc(sizeof("currentTime.txt")+1);
   char * time_string = (char *) malloc(256);
@@ -189,6 +195,7 @@ void* time_print()
   int _err_fwrite = fwrite(time_string, 1, strlen(time_string)+1, file);
   int _err_fclose = fclose(file);
   trace("Building file path for %s, in dir :: %s", file_path_to_create, checkpath);
+  printf("%s\n", time_string);
   /* open, and write please */
   pthread_mutex_unlock(&lock);
   free(time_string);

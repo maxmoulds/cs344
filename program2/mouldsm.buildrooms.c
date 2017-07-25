@@ -13,8 +13,6 @@
 
 #include <string.h>
 
-/*threads? */
-#include <pthread.h>
 
 /* Room names */
 #define MAX_CONNECTED_ROOMS 7
@@ -34,7 +32,6 @@ struct Room {
 bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]);
 bool CanAddConnection(Room * room1, Room * room2);
 Room * buildrooms();
-int adventure(Room rooms[MAX_CONNECTED_ROOMS]); 
 
 #define ONID "mouldsm"
 #define MIN_CONNECTIONS 3
@@ -89,7 +86,8 @@ Room * buildrooms() {
       chdir(dirname);
       bool noap[MAX_CONNECTED_ROOMS];/* I tried 10 different ways, bool arrays seem cheeszy bbbuut */
       memset(&noap, 0, MAX_CONNECTED_ROOMS * sizeof(bool)); /* Clearing with memset, oo what a cool tool */
-      for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
+      int i = 0;
+      for (i = 0; i < MAX_CONNECTED_ROOMS; i++) {
         room_list[i].connection_count = 0; /* For now nothing is connected, not max or min here brosif */
         int cap_conns = (rand() % (MAX_CONNECTIONS-(MIN_CONNECTIONS-2))) + MIN_CONNECTIONS-2 ; /* Okay I lied, we are going to set connection numbers */
         room_list[i].cap_conns = cap_conns;
@@ -106,8 +104,10 @@ Room * buildrooms() {
       }
       trace("Initialized the rooms...connecting");
       int rando = -1;
-      for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
-        for (int j = 0; j < room_list[i].cap_conns; j++) {
+      i = 0;
+      for (i = 0; i < MAX_CONNECTED_ROOMS; i++) {
+        int j = 0;
+        for (j = 0; j < room_list[i].cap_conns; j++) {
           rando = rand() % MAX_CONNECTED_ROOMS;
           trace("the random number should be between 0 and 6 and is %d", rando);
           while (!AddConnection(&(room_list[i]), &(room_list[rando]), room_list)) {
@@ -122,7 +122,8 @@ Room * buildrooms() {
       /* So lets recap the state at this point */
       /* room_list is a array of Room structs, each room is one of the 7 for a given run */
       /* NOW IO ME */
-      for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
+      i = 0;
+      for (i = 0; i < MAX_CONNECTED_ROOMS; i++) {
         char * checkpath = getcwd(NULL, 0); /* remember to free checkpath, also how does this handle errors? idk */
         trace("Should be in the new directory = %s so pwd is %s", dirname, checkpath);
         char * file_path_to_create = (char *) malloc(strlen(checkpath) + strlen(room_list[i].name) + (sizeof("/")));
@@ -146,7 +147,8 @@ Room * buildrooms() {
         /* Build connection strings. */
         char * room_connection_info;
         int room_connection_info_length = 0;
-        for (int j = 0; j < room_list[i].connection_count; j++) {
+        int j = 0;
+        for (j = 0; j < room_list[i].connection_count; j++) {
           room_connection_info_length += strlen("CONNECTION ");
           room_connection_info_length += snprintf(NULL, 0,"%d",j); /* deerty */
           room_connection_info_length += strlen((room_list[i].connections[j])->name);
@@ -162,7 +164,8 @@ Room * buildrooms() {
         trace("we are going to malloc %d bytes to write room connection info", room_connection_info_length);
         room_connection_info = (char *) malloc(room_connection_info_length * sizeof(char));
         char * end = room_connection_info;
-        for (int j = 0; j < room_list[i].connection_count; j++) {
+        j = 0;
+        for (j = 0; j < room_list[i].connection_count; j++) {
           end += sprintf(end, "%s", "CONNECTION ");
           end += sprintf(end, "%d", j+1);
           end += sprintf(end, "%s", ": ");
@@ -216,8 +219,8 @@ Room * buildrooms() {
   nd += sprintf(nd, "%s", "\n");
   FILE *file = fopen("game_state.txt", "w+"); /* so this is absolute and could cause errors? */
   int _err_fwrite = fwrite(dir, 1, strlen(dir), file);
-
-  for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
+  int i = 0;
+  for (i = 0; i < MAX_CONNECTED_ROOMS; i++) {
     /*so we need to write all of the stuct to a temp file */
     /*typedef struct Room Room;
      * struct Room {
@@ -237,7 +240,8 @@ Room * buildrooms() {
     end += sprintf(end, "%s", " ");
     end += sprintf(end, "%d", room_list[i].cap_conns);
     end += sprintf(end, "%s", " ");
-    for (int j = 0; j < room_list[i].connection_count; j++){
+    int j = 0;
+    for (j = 0; j < room_list[i].connection_count; j++){
       end += sprintf(end, "%s", room_list[i].connections[j]->name);
       end += sprintf(end, "%s", " ");
     }
@@ -274,7 +278,8 @@ bool CanAddConnection(Room * room1, Room * room2) {
   if (strcmp(room1->name,room2->name) == 0) {
     return true;
   }
-  for (int i = 0; i < room1->connection_count; i++) {
+  int i = 0;
+  for (i = 0; i < room1->connection_count; i++) {
     if ((strcmp((room1->connections[i])->name,room2->name) == 0) &&  room1->connections[i] != NULL) {
       return true;
     }
