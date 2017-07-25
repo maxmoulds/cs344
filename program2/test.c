@@ -1,11 +1,49 @@
 #include "header.h"
+/* One day ill get rid of the header file and this global... */
 Room room_list[7];
-
+/* lpthread stuffs */
+pthread_t tid;
+pthread_mutex_t lock;
+/* temporary function */
 void getFileCreationTime(char *path) {
   struct stat attr;
   stat(path, &attr);
   printf("Last modified time: %s\n", ctime(&attr.st_mtime));
   printf(" as int? %d\n", attr.st_ctime);
+}
+
+void* time_print()
+{
+  pthread_mutex_lock(&lock);
+  trace("started a thread, will this work?");
+  time_t rawtime;
+  struct tm * timeinfo;
+  time ( &rawtime );
+  timeinfo = localtime ( &rawtime );
+  /*lets check some stuffs */
+  trace("chdir may be needed? %s", getcwd(NULL, 0));
+  /* prep new file */
+  //char * filename = (char *) malloc(sizeof("currentTime.txt")+1);
+  char * time_string = (char *) malloc(256);
+  strftime(time_string, 256, "%l:%M%P, %A, %B %d, %Y", timeinfo);
+  trace("time string test :: %s ", time_string);
+  /* open file */
+  char * checkpath = getcwd(NULL, 0); /* remember to free checkpath, also how does this handle errors? idk */
+  char * file_path_to_create = (char *) malloc((strlen(checkpath) + strlen("currentTime.txt") + strlen("/") + strlen("\n"))*sizeof(char));
+  char * end = file_path_to_create;
+  end += sprintf(end, "%s", checkpath);
+  end += sprintf(end, "%s", "/");
+  end += sprintf(end, "%s", "currentTime.txt");
+  FILE *file = fopen(file_path_to_create, "ab+"); /* so this is absolute and could cause errors? */
+  int _err_fwrite = fwrite(time_string, 1, strlen(time_string)+1, file);
+  int _err_fclose = fclose(file);
+  info("Building file path for %s, in dir :: %s", file_path_to_create, checkpath);
+  /* open, and write please */
+  pthread_mutex_unlock(&lock);
+  free(time_string);
+  free(file_path_to_create);
+  free(checkpath);
+  return NULL;
 }
 
 void printRoom(Room * room) {
@@ -22,6 +60,21 @@ void printRoom(Room * room) {
 }
 
 int room_match(char * search, Room room, Room rooms[MAX_CONNECTED_ROOMS]) {
+  /* first, grab any time commands */
+  if (strcmp(search, "time") == 0) {
+    /* we need to write the time to a file using mutexes and lpthread */
+    trace("TIME COMMAND ISSUED");
+    int err = pthread_create(&(tid), NULL, &time_print, NULL);
+    if (err != 0) {
+      err("can't create thread :[%s]", strerror(err)); 
+    }
+    pthread_join(tid, NULL);
+    pthread_mutex_destroy(&lock);
+
+    /* set the state to invalid input, without reprint, actually just continue*/
+    printf("WHERE TO?: >");
+    return -1; //for now
+  }
   trace("matching %s to a room name", search);
   for (int i = 0; i < room.num_conns; i++)
   {
@@ -71,8 +124,16 @@ int input_room(char * line, int size_of_line, Room current_room, Room rooms[MAX_
     to_move_to_room = room_match(line, current_room, rooms);
   }
   if (to_move_to_room == -1) {
-    err("AGAIN YOU SHOULD NEVER BE HERE");
-    return -1; 
+    /* EASY CHEAT HERE, */
+    trace("BACK IN THE... US-");
+    to_move_to_room == -2;
+    /* self call */
+    return input_room(line, size_of_line, current_room, rooms);
+    /* this wont work */
+  }
+  if (to_move_to_room == -1) {
+    err("This should never happen, for realz");
+    exit -1;
   }
   return to_move_to_room;
 }
@@ -180,7 +241,7 @@ Room * buildrooms() {
       info("WE JUST SET THE START AND END ROOM AND THEY ARE %s and %s respectively", room_list[0].name, room_list[MAX_CONNECTED_ROOMS-1].name);
       /* So lets recap the state at this point */
       /* room_list is a array of Room structs, each room is one of the 7 for a given run */
-
+      /* NOW IO ME */
       for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
         char * checkpath = getcwd(NULL, 0); /* remember to free checkpath, also how does this handle errors? idk */
         trace("Should be in the new directory = %s so pwd is %s", dirname, checkpath);
