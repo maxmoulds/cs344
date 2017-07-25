@@ -31,7 +31,7 @@ struct Room {
   enum room_type type;
   const char *name;
   unsigned int cap_conns;
-  unsigned int num_conns;
+  unsigned int connection_count;
   Room *connections[7];
 };
 

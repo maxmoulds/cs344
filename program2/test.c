@@ -49,9 +49,9 @@ void* time_print()
 void printRoom(Room * room) {
   printf("CURRENT LOCATION: %s\n", room->name);
   printf("POSSIBLE CONNECTIONS: ");
-  for (int i = 0; i < room->num_conns; i++) {
+  for (int i = 0; i < room->connection_count; i++) {
     printf("%s", (room->connections[i])->name);
-    if (i < room->num_conns-1) {
+    if (i < room->connection_count-1) {
       printf(", ");
     }
   }
@@ -76,7 +76,7 @@ int room_match(char * search, Room room, Room rooms[MAX_CONNECTED_ROOMS]) {
     return -1; //for now
   }
   trace("matching %s to a room name", search);
-  for (int i = 0; i < room.num_conns; i++)
+  for (int i = 0; i < room.connection_count; i++)
   {
     if (strcmp(search, room.connections[i]->name) == 0) {
       /* Its a connected room, so now return the right index in the the room_list */
@@ -142,6 +142,8 @@ int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
   /* What to do, what to do, */
   /* lets test the functions */ 
   trace("Hey were in the adventure now....");
+  int road[256]; /* here is where you will store where the user went */ 
+  int steps = 0; /* this is the number of "turns" and index to road */
   /* So find the starting room? */
   trace("I hope this is the starting room - %s and type %s", rooms[0].name, room_type_string[rooms[0].type]);
   /* so spec says to re-read the files, okay, and find the one with the newest
@@ -151,12 +153,16 @@ int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
   trace("checking path :: %s ", checkpath);
   printRoom(&rooms[0]);
   Room current_room = rooms[0];
+  road[steps] = 0; /* starting room */
   char line[256];
   int to_move_to_room = input_room(line, sizeof(line), current_room, rooms);
   trace("we found a room %d :: %s which matched input of %s", to_move_to_room, rooms[to_move_to_room].name, line);
   /* now move to that room lets loop this. */
-  /* we no one move is needed. */
+  /* we know one move is needed. */
   current_room = rooms[to_move_to_room];
+  steps++;
+  road[steps] = to_move_to_room;
+  /* Loop until end room is reached */
   while (to_move_to_room != (MAX_CONNECTED_ROOMS-1)) {
     info("Not an end room yet, %d, %d", to_move_to_room, MAX_CONNECTED_ROOMS-1);
     info("end room is %s", rooms[MAX_CONNECTED_ROOMS-1].name);
@@ -164,12 +170,20 @@ int adventure(Room rooms[MAX_CONNECTED_ROOMS]) {
     to_move_to_room = input_room(line, sizeof(line), current_room, rooms);
     trace("we found a room %d :: %s which matched input of %s", to_move_to_room, rooms[to_move_to_room].name, line);
     current_room = rooms[to_move_to_room];
+    steps++;
+    road[steps] = to_move_to_room;
   }
   //free(line);//for some reason this barfs
   info("freeing checkpath");
   free(checkpath);
   /* Well to get here you must have been a winner */
   info("So END_ROOM is %s, and you are in the %s", rooms[MAX_CONNECTED_ROOMS-1].name, current_room.name);
+  info("you took %d steps on your path to the end", steps);
+  printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\n");
+  printf("YOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", steps+1);
+  for (int i = 0; i <= steps; i++) {
+    printf("%s\n",rooms[road[i]].name);
+  }
   return 0;
 }
 
@@ -209,9 +223,8 @@ Room * buildrooms() {
       bool noap[MAX_CONNECTED_ROOMS];/* I tried 10 different ways, bool arrays seem cheeszy bbbuut */
       memset(&noap, 0, MAX_CONNECTED_ROOMS * sizeof(bool)); /* Clearing with memset, oo what a cool tool */
       for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
-        room_list[i].num_conns = 0; /* For now nothing is connected, not max or min here brosif */
-        int cap_conns = rand() % (MAX_CONNECTIONS - MIN_CONNECTIONS); /* Okay I lied, we are going to set connection numbers */
-        cap_conns += MIN_CONNECTIONS-2;
+        room_list[i].connection_count = 0; /* For now nothing is connected, not max or min here brosif */
+        int cap_conns = (rand() % (MAX_CONNECTIONS-(MIN_CONNECTIONS-2))) + MIN_CONNECTIONS-2 ; /* Okay I lied, we are going to set connection numbers */
         room_list[i].cap_conns = cap_conns;
         /* Could this count forever? */
         while (true) {
@@ -229,7 +242,7 @@ Room * buildrooms() {
       for (int i = 0; i < MAX_CONNECTED_ROOMS; i++) {
         for (int j = 0; j < room_list[i].cap_conns; j++) {
           rando = rand() % MAX_CONNECTED_ROOMS;
-          trace("the random number should be between 0 and 7 and is %d", rando);
+          trace("the random number should be between 0 and 6 and is %d", rando);
           while (!AddConnection(&(room_list[i]), &(room_list[rando]), room_list)) {
             rando = rand() % MAX_CONNECTED_ROOMS;
           }
@@ -266,7 +279,7 @@ Room * buildrooms() {
         /* Build connection strings. */
         char * room_connection_info;
         int room_connection_info_length = 0;
-        for (int j = 0; j < room_list[i].num_conns; j++) {
+        for (int j = 0; j < room_list[i].connection_count; j++) {
           room_connection_info_length += strlen("CONNECTION ");
           room_connection_info_length += snprintf(NULL, 0,"%d",j); /* deerty */
           room_connection_info_length += strlen((room_list[i].connections[j])->name);
@@ -282,7 +295,7 @@ Room * buildrooms() {
         info("we are going to malloc %d bytes to write room connection info", room_connection_info_length);
         room_connection_info = (char *) malloc(room_connection_info_length * sizeof(char));
         char * end = room_connection_info;
-        for (int j = 0; j < room_list[i].num_conns; j++) {
+        for (int j = 0; j < room_list[i].connection_count; j++) {
           end += sprintf(end, "%s", "CONNECTION ");
           end += sprintf(end, "%d", j+1);
           end += sprintf(end, "%s", ": ");
@@ -329,19 +342,19 @@ Room * buildrooms() {
 bool AddConnection(Room * room1, Room * room2, Room room_list[MAX_CONNECTED_ROOMS]) {
   Room *r1 = room1;
   Room *r2 = room2;
-  if (r1->num_conns == MAX_CONNECTIONS) {
+  if (r1->connection_count == MAX_CONNECTIONS) {
     return true;
   }
   if (CanAddConnection(room1, room2)) {
     return false;
   }
-  if (r1->num_conns >= MAX_CONNECTIONS || r2->num_conns >= MAX_CONNECTIONS) {
+  if (r1->connection_count >= MAX_CONNECTIONS || r2->connection_count >= MAX_CONNECTIONS) {
     return false;
   }
-  r1->connections[r1->num_conns] = r2;
-  r2->connections[r2->num_conns] = r1;
-  r1->num_conns++;
-  r2->num_conns++;
+  r1->connections[r1->connection_count] = r2;
+  r2->connections[r2->connection_count] = r1;
+  r1->connection_count++;
+  r2->connection_count++;
   return true;
 }
 bool CanAddConnection(Room * room1, Room * room2) {
@@ -349,7 +362,7 @@ bool CanAddConnection(Room * room1, Room * room2) {
   if (strcmp(room1->name,room2->name) == 0) {
     return true;
   }
-  for (int i = 0; i < room1->num_conns; i++) {
+  for (int i = 0; i < room1->connection_count; i++) {
     if ((strcmp((room1->connections[i])->name,room2->name) == 0) &&  room1->connections[i] != NULL) {
       return true;
     }
