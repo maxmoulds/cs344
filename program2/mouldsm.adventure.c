@@ -1,4 +1,4 @@
-#define DEBUG 3
+//#define DEBUG 3
 
 #include <stdio.h>
 #include <stdlib.h>
