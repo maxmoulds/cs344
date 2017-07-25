@@ -74,7 +74,7 @@ Room * room_read() {
       /*wd = (char *) malloc(strlen(dir)*sizeof(char)+2*sizeof(char));*/
       strcpy(wd, dir);/* why does this not return right */
       trace("WD is %s", wd);
-      chdir(wd);
+      /*chdir(wd);*/
     }
     else {  
       in = strtok(line, " ");
@@ -178,7 +178,7 @@ void* time_print()
   timeinfo = localtime ( &rawtime );
   /*lets check some stuffs */
   chdir(wd);
-  trace("chdir may be needed? %s, but wd is %s", getcwd(NULL, 0));
+  trace("chdir may be needed? %s, but wd is %s", getcwd(NULL, 0), wd);
   /* prep new file */
   //char * filename = (char *) malloc(sizeof("currentTime.txt")+1);
   char * time_string = (char *) malloc(256);
@@ -186,11 +186,16 @@ void* time_print()
   trace("time string test :: %s ", time_string);
   /* open file */
   char * checkpath = getcwd(NULL, 0); /* remember to free checkpath, also how does this handle errors? idk */
-  char * file_path_to_create = (char *) malloc((strlen(checkpath) + strlen("currentTime.txt") + strlen("/") + strlen("\n"))*sizeof(char));
+  char * file_path_to_create = (char *) malloc((strlen(checkpath) + strlen("currentTime.txt") + 2*strlen("/") + strlen("\n") + strlen(wd))*sizeof(char));
   char * end = file_path_to_create;
+  trace("making file path?");
   end += sprintf(end, "%s", checkpath);
   end += sprintf(end, "%s", "/");
+  end += sprintf(end, "%s", wd);
+  end -= 1; /* remove the new line?*/
+  end += sprintf(end, "%s", "/");
   end += sprintf(end, "%s", "currentTime.txt");
+  trace("full path is :: %s", file_path_to_create);
   FILE *file = fopen(file_path_to_create, "ab+"); /* so this is absolute and could cause errors? */
   int _err_fwrite = fwrite(time_string, 1, strlen(time_string)+1, file);
   int _err_fclose = fclose(file);
