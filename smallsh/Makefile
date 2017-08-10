@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS= -Wall -lm
 LDFLAGS=
 SOURCES=smallsh.c
-EXECUTABLE=xsmallsh
+EXECUTABLE=smallsh
 
 all: $(SOURCES) $(EXECUTABLE)
 	    

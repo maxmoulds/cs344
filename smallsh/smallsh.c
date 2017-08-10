@@ -14,7 +14,7 @@ typedef int bool;
 #define true 1
 #define false 0
 //comment this out, to remove trace... set to anything to get them back
-#define DEBUG 1
+//#define DEBUG 1
 
 #if defined(DEBUG) && DEBUG > 0
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -53,6 +53,7 @@ void showstatus(int status);
 //helper functions
 void err_handle(int err) {
   pid_t pid = 0;
+  int pid_flag = 1;
   int status;
   if (err == 2)
   {
@@ -87,8 +88,12 @@ void err_handle(int err) {
   {
     //ima term child...awww
     trace("CHILD (%i parent: %i, getpid: %i) TERMINATED :: %s ::", pid, parent, getpid(), strerror(errno));
-    while (((pid = waitpid(-1, &status, WNOHANG)) != -1) & (pid != 0))
+    while (pid_flag != 0 && (((pid = waitpid(-1, &status, WNOHANG))) != -1)) //& (pid != 0))//ahh the error here is grrrr
     {
+      if (pid == 0)
+      {
+        pid_flag = 0;
+      }
       mprintf("Child process %i has finished!\n", pid);
       //dertywork
     }
@@ -163,7 +168,7 @@ int main(int argc, char*argv[])
   int exit_flag = 0;
   int argcount;
   int j = 0; //because i is overrated.
-  int k = 0; //because j is boring.
+  
   trace("Set up signal handler act");
   act.sa_handler = err_handle; //err_handle;
   sigemptyset(&act.sa_mask);
@@ -174,32 +179,27 @@ int main(int argc, char*argv[])
   sigaction(SIGTSTP, &act, NULL);
   sigaction(SIGINT, &act, NULL);
   sigaction(SIGCHLD, &act, NULL);
-  //signal(SIGTSTP, err_handle);
+  
   trace("Starting main loop... input first");
   trace("HELLO, THIS COULD BE A NEWBIE PID: %d", getpid());
   while(!exit_flag) 
   {
     trace("Entering another input loop...");
-    //if (signal(SIGTSTP, err_handle) == SIG_ERR)
-    //{
-    //  trace("Caught SIGTSTP, CTRL+Z... YAY");
-    //  mprintf("cant catch it\n");
-    //}
     bg = 0;
     arg_count = 0; //counting arguments
     trace("outputting two vertically aligned dots");
-PROMPT:mprintf(": ");//ready for next line, if there is 
+    PROMPT: mprintf(": ");//ready for next line, if there is 
        if (fgets(input, MAX_ARGS+1, stdin) == NULL) 
          //if (!(getline(&input, &size, stdin)))
        {
          trace("READ:: fgets has some stoopid error, like NOT too long of a line...");
          if (!feof(stdin)) {
-           goto PROMPT;
+           goto PROMPT; //this is to deal with some derty bits of my program, fgets leaves a \n behind? idk for sure.
          }
          return 0; //too long of a line
        }
        arg_count = 0;
-       //first lets comment toke.
+       //first lets comment toke. and some trailing newline eating
        if (strncmp((input==NULL ? "":input), COMMENT, 1) == 0)
        {
          if ((pos = strchr(input, NEWLINE)) != NULL)
@@ -371,17 +371,17 @@ PROMPT:mprintf(": ");//ready for next line, if there is
            //to read
            if (input_filename != NULL) 
            {
-             trace("input_filename OPEN :: %s ::", output_filename);
+             trace("input_filename OPEN :: %s ::", input_filename);
              file = fopen(input_filename, "r");
-             if (fileno(file) == -1);
+             if (!file);
              {
-               trace("ERR, input_filename ::  %s  ::", input_filename);
-               mprintf("smallsh:: cannot open %d for input\n", fileno(file));
+               trace("ERR, input_filename ::  %s  :: from fd :: %d ::", input_filename, file);
+               mprintf("smallsh:: cannot open %d for input\n", input_filename);
                _Exit(ERROR);//now hear this, ima child. 
              }
              if (dup2(fileno(file), 0) == -1)
              {
-               trace("Dup2 failed... what to do what to do... fileno(%d)", fileno(file));
+               trace("Dup2 failed... what to do what to do... fileno(%d)", file);
                perror("file descriptor dup error");
                _Exit(ERROR);
              }
@@ -392,7 +392,7 @@ PROMPT:mprintf(": ");//ready for next line, if there is
            {
              trace("This is the background now...");
              file = fopen("/dev/null", "r");
-             if (fileno(file) == -1)
+             if (!file)
              {
                trace("ERR, /dev/null did not fopen...");
                perror("open failed");
@@ -400,7 +400,7 @@ PROMPT:mprintf(": ");//ready for next line, if there is
              }
              if (dup2(fileno(file), 0) == -1)
              {
-               trace("Dup2 failed... fileno(%d)", fileno(file));
+               trace("Dup2 failed... fileno(%d)", file);
                perror("file descriptor dup error");
                _Exit(ERROR);
              }
@@ -411,15 +411,15 @@ PROMPT:mprintf(": ");//ready for next line, if there is
            {
              trace("Output_filename OPEN ::  %s  ::", output_filename);
              file = fopen(output_filename, "w");
-             if (fileno(file) == -1)
+             if (!file)
              {
-               trace("ERR, output_filename ::  %s  ::", output_filename);
+               trace("ERR, output_filename ::  %d  :: outpute filename is :: %s ::", file, output_filename);
                mprintf("smallsh:: cannot open %s for output\n", output_filename);
                _Exit(ERROR);
              }
              if (dup2(fileno(file), 1) == -1)
              {
-               trace("Dup2 failed... fileno(%d)", fileno(file));
+               trace("Dup2 failed... fileno(%d)", file);
                perror("file descriptor dup error");
                _Exit(ERROR);
              }
@@ -488,7 +488,10 @@ PROMPT:mprintf(": ");//ready for next line, if there is
              do 
              {
                //wait for fg
+               #ifdef DEBUG
                trace("...always waiting for something...");
+               sleep(1);
+               #endif
                waitpid(pid, &status, 0); //NO-WNOHANG, purrent
                fflush(stdout);
              }
