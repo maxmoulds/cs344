@@ -64,8 +64,10 @@ void err_handle(int err) {
       if (pid == -1) 
       {
         trace("Best guess is you are a parent (%i), and not allowed in the playhouse :: %d ::", pid, err);
-        mprintf("PARENT TERMINATED BY SIGNAL %d\n", err);
-        exit(err);
+        //mprintf(" PARENT TERMINATED BY SIGNAL %d\n", err);
+        //exit(err);
+        mprintf("\n");
+        return;
       }
       trace("At the airport, with SIGINT, waiting on the children...");
       if (errno == ECHILD) 
@@ -77,7 +79,7 @@ void err_handle(int err) {
     }
     if (pid != parent)
     {
-      mprintf("CHILD (%d) TERMINATED BY SIGNAL %i\n", pid, err);
+      mprintf(" CHILD (%d) TERMINATED BY SIGNAL %i\n", pid, err);
       trace("You arent my parent (%i) you are a child (%i)", parent, pid);
       return;
     }
@@ -360,6 +362,8 @@ int main(int argc, char*argv[])
          if (pid == 0)
          { 
            trace("I should be a child");
+           //removing sigint block
+           signal(SIGINT, SIG_DFL);
            if (!bg) 
            {
              //foreground child...
@@ -474,6 +478,8 @@ int main(int argc, char*argv[])
              _Exit(ERROR);
            }
            trace("done with exec... dealing with self identity issues");
+           //add back the sigint catch. 
+           sigaction(SIGINT, &act, NULL);
          }
          else if (pid < 0) 
          {
