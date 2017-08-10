@@ -94,8 +94,11 @@ void err_handle(int err) {
       {
         pid_flag = 0;
       }
+      else
+      {
       mprintf("Child process %i has finished!\n", pid);
       //dertywork
+      }
     }
     fflush(stdout);
     return;
