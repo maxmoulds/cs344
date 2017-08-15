@@ -1,43 +1,10 @@
-//THIS IS THE CLIENT FOR OTP_ENC_D.C
-//otp_enc.c
+//THIS IS THE CLIENT FOR OTP_DEC_D.C
+//otp_dec.c
 //Usage:
-//> otp_end <plaintext> <key> <port>
-//: <plaintest> is a file name for 
+//> otp_dec <ciphertext> <key> <port>
+//: <ciphertext> is a file name for the ciphertext
 //: <key> is a file name for key
 //: <port> is the port that otp_enc should attempt to connect to otp_enc_d on
-//
-//This program connects to otp_enc_d, and asks it to perform a one-time pad
-//style encryption as detailed above. By itself, otp_enc doesn't do the
-//encryption - otp_end_d does. The syntax of otp_enc is as follows:
-//> otp_end <plaintext> <key> <port>
-//: <plaintest> is a file name for 
-//: <key> is a file name for key
-//: <port> is the port that otp_enc should attempt to connect to otp_enc_d on
-//In this syntax, plaintext is the name of a file in the current directory that
-//contains the plaintext you wish to encrypt. Similarly, key contains the
-//encryption key you wish to use to encrypt the text. Finally, port is the port
-//that otp_enc should attempt to connect to otp_enc_d on.
-//
-//When otp_enc receives the ciphertext back from otp_enc_d, it should output it
-//to stdout. Thus, otp_enc can be launched in any of the following methods, and
-//should send its output appropriately:
-//$ otp_enc myplaintext mykey 57171
-//$ otp_enc myplaintext mykey 57171 > myciphertext
-//$ otp_enc myplaintext mykey 57171 > myciphertext &
-//
-//If otp_enc receives key or plaintext files with bad characters in them, or the
-//key file is shorter than the plaintext, it should exit with an error, and set
-//the exit value to 1. If otp_enc cannot find the port given, it should report
-//this error to stderr (not into the plaintext or ciphertext files) with the bad
-//port, and set the exit value to 2. Otherwise, on successfully running, otp_enc
-//should set the exit value to 0.
-//
-//otp_enc should NOT be able to connect to otp_dec_d, even if it tries to
-//connect on the correct port - you'll need to have the programs reject each
-//other. If this happens, otp_enc should report the rejection to stderr and then
-//terminate itself.
-//
-//Again, any and all error text must be output to stderr.
 
 #include <stdlib.h>
 #include <string.h>
@@ -59,7 +26,7 @@
 
 #define HOSTNAME "localhost"
 
-int otp_enc(char * input_filename, char * key_filename, int port);
+int otp_dec(char * input_filename, char * key_filename, int port);
 
 void error(const char *msg, int err) { perror(msg); exit(err); } // Error function used for reporting issues
 
@@ -67,11 +34,11 @@ void error(const char *msg, int err) { perror(msg); exit(err); } // Error functi
 int main(int argc, char ** argv) {
   if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } // Check usage & args
 
-  return otp_enc(argv[1], "keyfile", atoi(argv[2]));
+  return otp_dec(argv[1], "keyfile", atoi(argv[2]));
 }
 #endif
 
-int otp_enc(char * input_filename, char * key_filename, int port) {
+int otp_dec(char * input_filename, char * key_filename, int port) {
   //lets use client.c and server.c given to us. 
   //check file lengths
   FILE * fp;
@@ -101,6 +68,7 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
     error("key file size is smaller than input file size", ERROR_BAD_CHAR);
   }
   fclose(kp);
+
   int socketFD, portNumber, charsWritten, charsRead;
   struct sockaddr_in serverAddress;
   struct hostent* serverHostInfo;
@@ -144,3 +112,4 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
   fclose(fp);
   return 0;
 }
+

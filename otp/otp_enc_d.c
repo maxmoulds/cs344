@@ -176,6 +176,7 @@ int encrypt(char * message, int message_length,  char * key, int key_length, cha
       ciphertext[i] = ((char) ((((int)message[i] + (int)key[i]) % CHARSET_NUM) + ASCII_OFFSET));
     }   
   }
+  ciphertext[i] = '\0';
   return i;
 }
 
