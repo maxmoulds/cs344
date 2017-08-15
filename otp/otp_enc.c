@@ -98,7 +98,9 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
   if(key_file_size-1 < input_file_size) 
   {
     //error
-    error("key file size is smaller than input file size", ERROR_BAD_CHAR);
+    //error("Error: key file size is smaller than file size", ERROR_BAD_CHAR);
+    fprintf(stderr, "Error: key file size %d is smaller than input file \'%s\' size %d", key_file_size, input_filename, input_file_size);
+    exit(ERROR_BAD_CHAR);
   }
   fclose(kp);
   int socketFD, portNumber, charsWritten, charsRead;
