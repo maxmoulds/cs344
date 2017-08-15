@@ -60,15 +60,24 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-int otp_enc_d(int port);
-void error(const char *msg) { 
-  perror(msg); exit(1); 
-} // Error function used for reporting issues
-
-
 #define DEBUG 1
-#define ERROR 1
 
+#define ERROR 1
+#define ERROR_PORT 2
+#define ERROR_BAD_CHAR 1
+#define MAX_READ 255
+#define SPACE " "
+#define CHARSET_NUM 27
+#define ASCII_OFFSET 64
+
+#define HOSTNAME "localhost"
+
+int otp_enc_d(int port);
+int encrypt(char * message, int message_length,  char * key, int key_length, char * ciphertext, int ciphertext_length);
+
+void error(const char *msg, int err) { 
+  perror(msg); exit(err); 
+} // Error function used for reporting issues
 
 #ifdef DEBUG
 int main(int argc, char ** argv) {
@@ -79,60 +88,98 @@ int main(int argc, char ** argv) {
 #endif
 
 int otp_enc_d(int port) {
-   int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
-   socklen_t sizeOfClientInfo;
-   char buffer[256];
-   struct sockaddr_in serverAddress, clientAddress;
+  int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
+  socklen_t sizeOfClientInfo;
+  char buffer[MAX_READ+1];
+  char ciphertext[MAX_READ+1];
+  struct sockaddr_in serverAddress, clientAddress;
 
-   //if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
+  //if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
 
-   // Set up the address struct for this process (the server)
-   memset((char *)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
-   portNumber = port; //atoi(argv[1]); // Get the port number, convert to an integer from a string
-   serverAddress.sin_family = AF_INET; // Create a network-capable socket
-   serverAddress.sin_port = htons(portNumber); // Store the port number
-   serverAddress.sin_addr.s_addr = INADDR_ANY; // Any address is allowed for connection to this process
+  // Set up the address struct for this process (the server)
+  memset((char *)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
+  portNumber = port; //atoi(argv[1]); // Get the port number, convert to an integer from a string
+  serverAddress.sin_family = AF_INET; // Create a network-capable socket
+  serverAddress.sin_port = htons(portNumber); // Store the port number
+  serverAddress.sin_addr.s_addr = INADDR_ANY; // Any address is allowed for connection to this process
 
-   // Set up the socket
-   listenSocketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
-   if (listenSocketFD < 0) error("ERROR opening socket");
+  // Set up the socket
+  listenSocketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
+  if (listenSocketFD < 0) error("ERROR opening socket", ERROR_PORT);
 
-   // Enable the socket to begin listening
-   if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
-      error("ERROR on binding");
-   listen(listenSocketFD, 5); // Flip the socket on - it can now receive up to 5 connections
+  // Enable the socket to begin listening
+  if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
+    error("ERROR on binding", ERROR_PORT);
+  listen(listenSocketFD, 5); // Flip the socket on - it can now receive up to 5 connections
 
-   // Accept a connection, blocking if one is not available until one connects
-   sizeOfClientInfo = sizeof(clientAddress); // Get the size of the address for the client that will connect
-   establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
-   if (establishedConnectionFD < 0) error("ERROR on accept");
+  // Accept a connection, blocking if one is not available until one connects
+  sizeOfClientInfo = sizeof(clientAddress); // Get the size of the address for the client that will connect
+  establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
+  if (establishedConnectionFD < 0) error("ERROR on accept", ERROR_PORT);
 
-   //loop here ?
-  
-   // Get the message from the client and display it
-   memset(buffer, '\0', 256);
-   ssize_t total = 0;
-   while (charsRead = recv(establishedConnectionFD, buffer, 255, 0) > 0) //; // Read the client's message from the socket
-   {
-     if (charsRead < 0) error("ERROR reading from socket");
-     total += charsRead;
-     printf("charsread is %d, and total is now : %zd\n", charsRead, total);
-   printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+  //time to fork? 
+  //what is the communication port
 
-   // Send a Success message back to the client
-   charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-   if (charsRead < 0) error("ERROR writing to socket");
-   memset(buffer, '\0', 256); //ready buffer for next message
-   }
-   printf("total is %zd\n", total);
-   snprintf(buffer, sizeof(buffer)-1, "I am the server, and I got your WHOLE message of %zd chars", total);
-   printf("final message : %s\n", buffer);
-   charsRead = send(establishedConnectionFD, buffer, strlen(buffer), 0); // Send success back
-   close(establishedConnectionFD); // Close the existing socket which is connected to the client
-   close(listenSocketFD); // Close the listening socket
-  
+
+
+  //loop here ?
+  char * keybuf = calloc(MAX_READ+1, sizeof(char));
+  int encrypted_chars = 0;
+  //recieve the keyfile. 
+  //for now just open. 
+  FILE * kp = fopen("keyfile", "r");
+  if (fgets(keybuf, sizeof(keybuf)-1, kp) != NULL)
+  {
+
+    // Get the message from the client and display it
+    memset(buffer, '\0', 256);
+    ssize_t total = 0;
+    while (charsRead = recv(establishedConnectionFD, buffer, 255, 0) > 0) //; // Read the client's message from the socket
+    {
+      if (charsRead < 0) error("ERROR reading from socket", ERROR_PORT);
+      total += charsRead;
+      printf("charsread is %d, and total is now : %zd\n", charsRead, total);
+      printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+
+      //now encrypt it. 
+      encrypted_chars += encrypt(buffer, strlen(buffer), keybuf, strlen(keybuf), ciphertext, sizeof(ciphertext));
+      printf("Encrypted text is : %s :\n", ciphertext);
+
+      // Send a Success message back to the client
+      charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
+      if (charsRead < 0) error("ERROR writing to socket", ERROR_PORT);
+      memset(buffer, '\0', sizeof(buffer)); //ready buffer for next message
+      memset(ciphertext, '\0', sizeof(ciphertext));
+    }
+    printf("total is %zd\n", total);
+    snprintf(buffer, sizeof(buffer)-1, "I am the server, and I got your WHOLE message of %zd chars", total);
+    printf("final message : %s\n", buffer);
+    charsRead = send(establishedConnectionFD, buffer, strlen(buffer), 0); // Send success back
+    close(establishedConnectionFD); // Close the existing socket which is connected to the client
+    close(listenSocketFD); // Close the listening socket
+  }
+  else 
+  {
+    //problem getting keyfile
+    error("problem with keyfile", ERROR_BAD_CHAR);
+  }
   return 0;
 }
 
+int encrypt(char * message, int message_length,  char * key, int key_length, char * ciphertext, int ciphertext_length) {
+  int i = 0;
+  for (i = 0; i < message_length; i++)
+  {
+    if (strncmp(&message[i], SPACE, 1) == 0) //is space do something
+    {   
+      ciphertext[i] = ((char) ((((int)'@' + (int)key[i]) % CHARSET_NUM) + ASCII_OFFSET)); 
+    }   
+    else //add keyfile pos to it. then mod. 
+    {   
+      ciphertext[i] = ((char) ((((int)message[i] + (int)key[i]) % CHARSET_NUM) + ASCII_OFFSET));
+    }   
+  }
+  return i;
+}
 
 

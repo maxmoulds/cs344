@@ -53,10 +53,15 @@
 #define ERROR_PORT 2
 #define ERROR_BAD_CHAR 1
 #define MAX_READ 255
+#define SPACE " "
+#define CHARSET_NUM 27
+#define ASCII_OFFSET 64
 
 #define HOSTNAME "localhost"
 
 int otp_enc(char * input_filename, char * key_filename, int port);
+int encrypt(char * message, int message_length, char * key, int key_length, char * ciphertext, int cipertext_length);
+
 void error(const char *msg, int err) { perror(msg); exit(err); } // Error function used for reporting issues
 
 #ifdef DEBUG
@@ -109,6 +114,7 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
   struct hostent* serverHostInfo;
   //char * buffer = calloc(input_file_size+10, sizeof(char));
   char buffer[MAX_READ+1];
+  char ciphertext[MAX_READ+1];
   //if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } // Check usage & args
 
   // Set up the server address struct
@@ -133,34 +139,69 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
   // Get input message from user
   //printf("CLIENT: Enter text to send to the server, and then hit enter: ");
 
-  while (!feof(fp))
+  //read all of keyfile into memory for now. 
+  char * keybuf = calloc(key_file_size+1, sizeof(char));
+  int encrypted_chars = 0;
+  if (fgets(keybuf, sizeof(keybuf)-1, kp) != NULL)
   {
-
-    memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-    if (fgets(buffer, sizeof(buffer) - 1, fp) != NULL)  //stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
+    while (!feof(fp))
     {
-      buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
+      memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
+      memset(ciphertext, '\0', sizeof(ciphertext));
+      if (fgets(buffer, sizeof(buffer) - 1, fp) != NULL)  //stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
+      {
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
+        //encrypt line using keyfile. 
 
-      // Send message to server
-      charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
-      if (charsWritten < 0) error("CLIENT: ERROR writing to socket", ERROR_PORT);
-      if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+        encrypted_chars += encrypt(buffer, strlen(buffer), keybuf, strlen(keybuf), ciphertext, sizeof(ciphertext));
+        printf("Encrypted message is : %s :\n", ciphertext);
+        // Send message to server
+        //charsWritten = send(socketFD, ciphertext, strlen(ciphertext), 0); // Write to the server
+        charsWritten = send(socketFD, buffer, strlen(buffer), 0);
+        if (charsWritten < 0) error("CLIENT: ERROR writing to socket", ERROR_PORT);
+        if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
 
-      // Get return message from server
-      memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-      //free(buffer);
-      //buffer = calloc(MAX_READ+1, sizeof(char));
-      charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-      if (charsRead < 0) error("CLIENT: ERROR reading from socket", ERROR_PORT);
-      printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+        // Get return message from server
+        memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
+        //memset(ciphertext, '\0', sizeof(ciphertext));
+        //free(buffer);
+        //buffer = calloc(MAX_READ+1, sizeof(char));
+        charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0);
+        //charsRead = recv(socketFD, ciphertext, sizeof(ciphertext) - 1, 0); // Read data from the socket, leaving \0 at end
+        if (charsRead < 0) error("CLIENT: ERROR reading from socket", ERROR_PORT);
+        printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+        //printf("CLIENT: I received this from the server: \"%s\"\n", ciphertext);
+      }
+      else
+      {
+        //error with fgets?
+        //printf("End..\n");
+        //error("fgets bad char?", ERROR_BAD_CHAR);
+      }
+      //printf("Encrypted chars is : %d\n", encrypted_chars);
     }
-    else
-    {
-      //error with fgets?
-      //error("fgets bad char?", ERROR_BAD_CHAR);
-    }
+    close(socketFD); // Close the socket
   }
-  close(socketFD); // Close the socket
+  else
+  {
+    error("keyfile buffer allocation and/or fgets error", ERROR_BAD_CHAR);
+  }
 
   return 0;
+}
+
+int encrypt(char * message, int message_length,  char * key, int key_length, char * ciphertext, int ciphertext_length) {
+  int i = 0;
+  for (i = 0; i < message_length; i++)
+  {
+    if (strncmp(&message[i], SPACE, 1) == 0) //is space do something
+    {
+      ciphertext[i] = ((char) ((((int)'@' + (int)key[i]) % CHARSET_NUM) + ASCII_OFFSET)); 
+    }
+    else //add keyfile pos to it. then mod. 
+    {
+      ciphertext[i] = ((char) ((((int)message[i] + (int)key[i]) % CHARSET_NUM) + ASCII_OFFSET));
+    }
+  }
+  return i;
 }
