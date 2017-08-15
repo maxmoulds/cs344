@@ -101,20 +101,12 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
     //error
     error("key file size is smaller than input file size", ERROR_BAD_CHAR);
   }
-
-  printf("The file sizes for input are : %d : and for keyfile : %d :\n",input_file_size, key_file_size);
-  //input_filename is plaintext. 
-
-  //key_filename is the key file
-
-  //port is the port number
-
+  fclose(kp);
   int socketFD, portNumber, charsWritten, charsRead;
   struct sockaddr_in serverAddress;
   struct hostent* serverHostInfo;
   //char * buffer = calloc(input_file_size+10, sizeof(char));
   char buffer[MAX_READ+1];
-  char ciphertext[MAX_READ+1];
   //if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } // Check usage & args
 
   // Set up the server address struct
@@ -133,60 +125,24 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
   // Connect to server
   if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
     error("CLIENT: ERROR connecting", ERROR_PORT);
-
-  //now transfer
-
-  // Get input message from user
-  //printf("CLIENT: Enter text to send to the server, and then hit enter: ");
-
-  //read all of keyfile into memory for now. 
-  char * keybuf = calloc(key_file_size+1, sizeof(char));
-  int encrypted_chars = 0;
-  if (fgets(keybuf, sizeof(keybuf)-1, kp) != NULL)
+  //while (!feof(fp))
+  //{
+  memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
+  if (fgets(buffer, sizeof(buffer) - 1, fp) != NULL)  //stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
   {
-    while (!feof(fp))
-    {
-      memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-      memset(ciphertext, '\0', sizeof(ciphertext));
-      if (fgets(buffer, sizeof(buffer) - 1, fp) != NULL)  //stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
-      {
-        buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
-        //encrypt line using keyfile. 
-
-        encrypted_chars += encrypt(buffer, strlen(buffer), keybuf, strlen(keybuf), ciphertext, sizeof(ciphertext));
-        printf("Encrypted message is : %s :\n", ciphertext);
-        // Send message to server
-        //charsWritten = send(socketFD, ciphertext, strlen(ciphertext), 0); // Write to the server
-        charsWritten = send(socketFD, buffer, strlen(buffer), 0);
-        if (charsWritten < 0) error("CLIENT: ERROR writing to socket", ERROR_PORT);
-        if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
-
-        // Get return message from server
-        memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-        //memset(ciphertext, '\0', sizeof(ciphertext));
-        //free(buffer);
-        //buffer = calloc(MAX_READ+1, sizeof(char));
-        charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0);
-        //charsRead = recv(socketFD, ciphertext, sizeof(ciphertext) - 1, 0); // Read data from the socket, leaving \0 at end
-        if (charsRead < 0) error("CLIENT: ERROR reading from socket", ERROR_PORT);
-        printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
-        //printf("CLIENT: I received this from the server: \"%s\"\n", ciphertext);
-      }
-      else
-      {
-        //error with fgets?
-        //printf("End..\n");
-        //error("fgets bad char?", ERROR_BAD_CHAR);
-      }
-      //printf("Encrypted chars is : %d\n", encrypted_chars);
-    }
-    close(socketFD); // Close the socket
+    buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
+    charsWritten = send(socketFD, buffer, strlen(buffer), 0);
+    if (charsWritten < 0) error("CLIENT: ERROR writing to socket", ERROR_PORT);
+    if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+    // Get return message from server
+    memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
+    charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0);
+    if (charsRead < 0) error("CLIENT: ERROR reading from socket", ERROR_PORT);
+    printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
   }
-  else
-  {
-    error("keyfile buffer allocation and/or fgets error", ERROR_BAD_CHAR);
-  }
-
+  //}
+  close(socketFD); // Close the socket
+  fclose(fp);
   return 0;
 }
 
