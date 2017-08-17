@@ -1,56 +1,3 @@
-
-//This program will run in the background as a daemon. Upon execution, otp_enc_d
-//must output an error if it cannot be run due to a network error, such as the
-//ports being unavailable. Its function is to perform the actual encoding, as
-//described above in the Wikipedia quote. This program will listen on a
-//particular port/socket, assigned when it is first ran (see syntax below). When
-//a connection is made, otp_enc_d must call accept() to generate the socket used
-//for actual communication, and then use a separate process to handle the rest
-//of the transaction (see below), which will occur on the newly accepted socket.
-//
-//This child process of otp_enc_d must first check to make sure it is
-//communicating with otp_enc (see otp_enc, below). After verifying that the
-//connection to otp_enc_d is coming from otp_enc, then this child receives from
-//otp_enc plaintext and a key via the communication socket (not the original
-//listen socket). The otp_enc_d child will then write back the ciphertext to the
-//otp_enc process that it is connected to via the same communication socket.
-//Note that the key passed in must be at least as big as the plaintext.
-//
-//Your version of otp_enc_d must support up to five concurrent socket
-//connections running at the same time; this is different than the number of
-//processes that could queue up on your listening socket (which is specified in
-//the second parameter of the listen() call). Again, only in the child process
-//will the actual encryption take place, and the ciphertext be written back: the
-//original server daemon process continues listening for new connections, not
-//encrypting data.
-//
-//In terms of creating that child process as described above, you may either
-//create with fork() a new process every time a connection is made, or set up a
-//pool of five processes at the beginning of the program, before connections are
-//allowed, to handle your encryption tasks. As above, your system must be able
-//to do five separate encryptions at once, using either method you choose.
-//
-//Use this syntax for otp_enc_d:
-//
-//otp_enc_d listening_port
-//listening_port is the port that otp_enc_d should listen on. You will always
-//start otp_enc_d in the background, as follows (the port 57171 is just an
-//example; yours should be able to use any port):
-//
-//$ otp_enc_d 57171 &
-//In all error situations, this program must output errors to stderr as
-//appropriate (see grading script below for details), but should not crash or
-//otherwise exit, unless the errors happen when the program is starting up (i.e.
-//are part of the networking start up protocols like bind()). If given bad
-//input, once running, otp_enc_d should recognize the bad input, report an error
-//to stderr, and continue to run. Generally speaking, though, this daemon
-//shouldn't receive bad input, since that should be discovered and handled in
-//the client first. All error text must be output to stderr.
-//
-//This program, and the other 3 network programs, should use "localhost" as the
-//target IP address/host. This makes them use the actual computer they all share
-//as the target for the networking connections.
-//
 //
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,6 +16,8 @@
 #define SPACE " "
 #define CHARSET_NUM 27
 #define ASCII_OFFSET 64
+#define OTP_ENC_INT 1
+#define OTP_ENC_D_INT 2
 
 #define HOSTNAME "localhost"
 
@@ -76,7 +25,7 @@ int otp_enc_d(int port);
 int encrypt(char * message, int message_length,  char * key, int key_length, char * ciphertext, int ciphertext_length);
 
 void error(const char *msg, int err) { 
-  perror(msg); exit(err); 
+  fprintf(stderr, "%d: %s\n", err, msg); exit(err); 
 } // Error function used for reporting issues
 
 #ifdef DEBUG
@@ -90,8 +39,33 @@ int main(int argc, char ** argv) {
 int otp_enc_d(int port) {
   int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
   socklen_t sizeOfClientInfo;
-  char buffer[MAX_READ+1];
+
+  char keybuf[MAX_READ+1];
+  memset(keybuf, -1, sizeof(keybuf));
+  keybuf[MAX_READ] = '\0';
   char ciphertext[MAX_READ+1];
+  memset(ciphertext, -1, sizeof(ciphertext));
+  ciphertext[MAX_READ] = '\0';
+  char response[MAX_READ+1+(sizeof(int)/sizeof(char))+1];
+  memset(response, -1, sizeof(response));
+  response[sizeof(response)-1] = '\0';
+  char * buffer = (response+sizeof(int)/sizeof(char));//&(response[MAX_READ+1]);
+  memset(buffer, -1, MAX_READ);
+  //buffer[sizeof(buffer)-1] = NULL; //redundant if all is good but doesnt hurt. 
+  buffer[MAX_READ] = '\0';//oo ima bad boy
+  //printf("buffer + sizeof(int)/sizeof(char) : %lu : \n", (sizeof(int)/sizeof(char)));
+  int * id = response;
+
+  //buffer += (sizeof(int)/sizeof(char));//u kno structs are cooler. but so are floating points...
+  *id = 10; 
+  printf("id is %d\n *buffer[0] = %p, *buffer[MAX_READ] = %p, message = %lu, keybuf = %lu, and ciphertext = %lu\n", *id, buffer, (&(buffer[MAX_READ-1])), sizeof(response), sizeof(keybuf), sizeof(ciphertext));
+  printf("CHECK:  %x (hex), %lu, should be %d\n", ((&(buffer[MAX_READ-1]))-(&(buffer[0]))), ((&(buffer[MAX_READ-1]))-(((buffer)))), MAX_READ);
+  printf("CHECK2:  %x (dhex), %lu, should be %d\n", ((&(response[MAX_READ+2+(sizeof(int)/sizeof(char))]))-(&(response[0]))), ((&(response[MAX_READ+2+(sizeof(int)/sizeof(char))]))-(((response)))), MAX_READ+2+(sizeof(int)/sizeof(char)+1));
+  //char ciphertext[MAX_READ+1];
+  printf("main = %p, id = %p, response = %p , response[max-read+dfs] = %p, sizeofid = %d,\n", main, id, response, &(response[MAX_READ+2+(sizeof(int)/sizeof(char))]), sizeof(*id)); 
+  printf("strlent buffer = %d,sizeof buffer = %d,  buffer[0] = %d, buffer[sizeofbuffer-1] = %d, buffer[maxread[ = %d ,\n", strlen(buffer), sizeof(buffer), buffer[0], buffer[sizeof(buffer)-1], buffer[MAX_READ-1]);
+
+
   struct sockaddr_in serverAddress, clientAddress;
   FILE * kp;
   //if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
@@ -116,7 +90,7 @@ int otp_enc_d(int port) {
     error("ERROR on listen", ERROR_PORT);
   }
   kp = fopen("keyfile2", "r");
-  char * keybuf = calloc(MAX_READ+1, sizeof(char));
+  //char * keybuf = calloc(MAX_READ+1, sizeof(char));
   int encrypted_chars = 0;
   ssize_t total = 0;
 
@@ -130,24 +104,40 @@ int otp_enc_d(int port) {
       printf("SERVER: Connected Client at port %d\n", ntohs(clientAddress.sin_port));
       encrypted_chars = 0;
       memset(buffer, '\0', MAX_READ+1);
-      total = 0;
-      (charsRead = recv(establishedConnectionFD, buffer, MAX_READ, 0) > 0); // Read the client's message from the socket
+      memset(ciphertext, '\0', sizeof(ciphertext));
+      (charsRead = recv(establishedConnectionFD, response, sizeof(response), 0) > 0); // Read the client's message from the socket
       if (charsRead < 0) error("ERROR reading from socket", ERROR_PORT);
-      total += charsRead;
-      //printf("charsread is %d, and total is now : %zd\n", charsRead, total);
-      printf("SERVER: I received this from the client: \"%s\"\n", buffer);
-      //now encrypt it. 
-      encrypted_chars += encrypt(buffer, strlen(buffer), keybuf, strlen(keybuf), ciphertext, sizeof(ciphertext));
-      printf("SERVER: Encrypted text is : %s :\n", ciphertext);
+      printf("SERVER: I received this from the client(%d): \"%s\"\n", *id, buffer);
+      if ((*id) != OTP_ENC_INT) 
+      {
+        //do i want to exit or just log and keep accepting. hmmm. lets do both
+        fprintf(stderr, "ERROR: rejected connection from %d - not otp_enc trying to connect\n", *id);
+        //close fd?
+        snprintf(ciphertext, 61, "ERROR: rejected connection - not otp_enc trying to connect");
+        *id = ERROR;
+        //continue;
+        //error("ERROR: rejected - not otp_enc trying to connect", ERROR_PORT);
+      }
+      else 
+      {
+        total += charsRead;
+        *id = OTP_ENC_D_INT;
+        encrypted_chars += encrypt(buffer, strlen(buffer), keybuf, strlen(keybuf), ciphertext, sizeof(ciphertext));
+        printf("SERVER: Encrypted text is : %s :\n", ciphertext);
+      }
       // Send a Success message back to the client
-      memset(buffer, '\0', sizeof(buffer));
-      snprintf(buffer, sizeof(buffer)-1, "I am the server, and I got your WHOLE message of %zd chars", total);
-      charsRead = send(establishedConnectionFD, buffer, strlen(buffer), 0); // Send success back
+      memset(buffer, '\0', MAX_READ);
+      memcpy(buffer, ciphertext, MAX_READ);
+
+      printf("SERVER: sending :: %d - %s\n", *id, buffer);
+      //snprintf(buffer, MAX_READ-1, "I am the server, and I got your WHOLE message of %zd chars", encrypted_chars);
+      charsRead = send(establishedConnectionFD, response, sizeof(response), 0); // Send success back
       if (charsRead < 0) error("ERROR writing to socket", ERROR_PORT);
       //memset(buffer, '\0', sizeof(buffer)); //ready buffer for next message
-      memset(ciphertext, '\0', sizeof(ciphertext));
+      //memset(ciphertext, '\0', sizeof(ciphertext));
       //snprintf(buffer, sizeof(buffer)-1, "I am the server, and I got your WHOLE message of %zd chars", total);
       //charsRead = send(establishedConnectionFD, buffer, strlen(buffer), 0); // Send success back
+
       close(establishedConnectionFD); // Close the existing socket which is connected to the client
     }
   }

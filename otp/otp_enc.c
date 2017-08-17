@@ -6,38 +6,6 @@
 //: <key> is a file name for key
 //: <port> is the port that otp_enc should attempt to connect to otp_enc_d on
 //
-//This program connects to otp_enc_d, and asks it to perform a one-time pad
-//style encryption as detailed above. By itself, otp_enc doesn't do the
-//encryption - otp_end_d does. The syntax of otp_enc is as follows:
-//> otp_end <plaintext> <key> <port>
-//: <plaintest> is a file name for 
-//: <key> is a file name for key
-//: <port> is the port that otp_enc should attempt to connect to otp_enc_d on
-//In this syntax, plaintext is the name of a file in the current directory that
-//contains the plaintext you wish to encrypt. Similarly, key contains the
-//encryption key you wish to use to encrypt the text. Finally, port is the port
-//that otp_enc should attempt to connect to otp_enc_d on.
-//
-//When otp_enc receives the ciphertext back from otp_enc_d, it should output it
-//to stdout. Thus, otp_enc can be launched in any of the following methods, and
-//should send its output appropriately:
-//$ otp_enc myplaintext mykey 57171
-//$ otp_enc myplaintext mykey 57171 > myciphertext
-//$ otp_enc myplaintext mykey 57171 > myciphertext &
-//
-//If otp_enc receives key or plaintext files with bad characters in them, or the
-//key file is shorter than the plaintext, it should exit with an error, and set
-//the exit value to 1. If otp_enc cannot find the port given, it should report
-//this error to stderr (not into the plaintext or ciphertext files) with the bad
-//port, and set the exit value to 2. Otherwise, on successfully running, otp_enc
-//should set the exit value to 0.
-//
-//otp_enc should NOT be able to connect to otp_dec_d, even if it tries to
-//connect on the correct port - you'll need to have the programs reject each
-//other. If this happens, otp_enc should report the rejection to stderr and then
-//terminate itself.
-//
-//Again, any and all error text must be output to stderr.
 
 #include <stdlib.h>
 #include <string.h>
@@ -56,18 +24,24 @@
 #define SPACE " "
 #define CHARSET_NUM 27
 #define ASCII_OFFSET 64
+#define OTP_ENC_INT 5 //testing should be 1
+#define OTP_ENC_D_INT 2
+#define OTP_DEC_INT 3
+#define OTP_DEC_D_INT 4
 
 #define HOSTNAME "localhost"
 
 int otp_enc(char * input_filename, char * key_filename, int port);
 
-void error(const char *msg, int err) { perror(msg); exit(err); } // Error function used for reporting issues
+void * mymalloc(size_t num, size_t size, int * id, char * buffer);
+void myfree(int * id, char * buffer);
+void error(const char *msg, int err) { fprintf(stderr, "%s", msg); exit(err); } // Error function used for reporting issues
 
 #ifdef DEBUG
 int main(int argc, char ** argv) {
-  if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } // Check usage & args
+  if (argc < 3) { fprintf(stderr,"USAGE: %s plaintext key port\n", argv[0]); exit(0); } // Check usage & args
 
-  return otp_enc(argv[1], "keyfile", atoi(argv[2]));
+  return otp_enc(argv[1], argv[2], atoi(argv[3]));
 }
 #endif
 
@@ -107,7 +81,25 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
   struct sockaddr_in serverAddress;
   struct hostent* serverHostInfo;
   //char * buffer = calloc(input_file_size+10, sizeof(char));
-  char buffer[MAX_READ+1];
+  
+
+  char message[MAX_READ+1+(sizeof(int)/sizeof(char))+1];
+  memset(message, -1, sizeof(message));
+  message[MAX_READ] = '\0';
+  char * buffer = (message+sizeof(int)/sizeof(char));//&(response[MAX_READ+1]);
+  memset(buffer, -1, MAX_READ);
+  buffer[MAX_READ] = '\0';
+  //buffer = (((int)buffer)+1);
+  //printf("buffer + sizeof(int)/sizeof(char) : %lu : \n", (sizeof(int)/sizeof(char)));
+  int * id = message;
+  *id = OTP_ENC_INT;
+  //buffer += (sizeof(int)/sizeof(char));//u kno structs are cooler. but so are floating points...
+  //*id = 10; 
+  //printf("id is %d\n *buffer[0] = %p, *buffer[MAX_READ] = %p, message = %lu\n", *id, buffer, (&(buffer[MAX_READ-1])), sizeof(message)); 
+  //printf("CHECK:  %x (hex), %lu, should be %d\n", ((&(buffer[MAX_READ]))-(&(buffer[0]))), ((&(buffer[MAX_READ]))-(((buffer)))), MAX_READ);
+  //printf("main = %p, id = %p, message = %p , message[max-read] = %p, sizeofid = %d,\n", main, id, message, &(message[MAX_READ-1]), sizeof(*id)); 
+
+
   //if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } // Check usage & args
 
   // Set up the server address struct
@@ -128,21 +120,29 @@ int otp_enc(char * input_filename, char * key_filename, int port) {
     error("CLIENT: ERROR connecting", ERROR_PORT);
   //while (!feof(fp))
   //{
-  memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-  if (fgets(buffer, sizeof(buffer) - 1, fp) != NULL)  //stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
+  memset(buffer, '\0', MAX_READ); // Clear out the buffer array
+  if (fgets(buffer, MAX_READ - 1, fp) != NULL)  //stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
   {
     buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
-    charsWritten = send(socketFD, buffer, strlen(buffer), 0);
+    charsWritten = send(socketFD, message, sizeof(message), 0);
     if (charsWritten < 0) error("CLIENT: ERROR writing to socket", ERROR_PORT);
-    if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+    if (charsWritten < sizeof(message)) printf("CLIENT: WARNING: Not all data written to socket!\n");
     // Get return message from server
-    memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-    charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0);
+    memset(buffer, '\0', MAX_READ); // Clear out the buffer again for reuse
+    charsRead = recv(socketFD, message, sizeof(message), 0);
     if (charsRead < 0) error("CLIENT: ERROR reading from socket", ERROR_PORT);
-    printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+    printf("CLIENT: I (%d) received this from the server: \"%s\"\n", *id, buffer);
   }
   //}
   close(socketFD); // Close the socket
   fclose(fp);
   return 0;
 }
+
+//void * mymalloc(size_t num, size_t size, int * id, char * buffer) {
+//  buffer = calloc(size
+//}
+
+//void myfree(int * id, char * buffer) {
+
+//}

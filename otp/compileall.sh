@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-
-
 pathappend() {
   for ARG in "$@"
   do
@@ -28,5 +26,21 @@ gcc -o $_OTP_DEC_D otp_dec_d.c
 
 #pathappend #"$(pwd)/$_KEYGEN" "$(pwd)/$_OPT_ENC"
 #export PATH=$PATH:.
+#export PATH=$PATH:$(pwd)
 
+#echo $PATH
+#echo $PATH:$(pwd)
+
+#newpath=$PATH:$(pwd)
+
+#PATH=$newpath
+
+#export PATH
+#source ~/.bashrc
 #exit
+
+#exec env PATH=$newpath bash
+
+#kill -TERM $$
+#exit 1 
+

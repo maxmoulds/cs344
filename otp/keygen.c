@@ -13,7 +13,7 @@
 #include <time.h>
 
 #define DEBUG 1
-#define MAX_KEY_LENGTH 8193
+#define MAX_KEY_LENGTH 8193000
 #define CHARSET 27 //space is @ ?
 #define ASCII_OFFSET 64 
 
